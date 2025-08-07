@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gray-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SPA Payment Widget - Test Page</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="h-full bg-gray-50">
+    <div class="min-h-screen">
+        <!-- Header -->
+        <header class="bg-white shadow-sm border-b border-gray-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-between h-16">
+                    <div class="flex items-center">
+                        <h1 class="text-xl font-semibold text-gray-900">Payment Widget Test Suite</h1>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <div class="text-sm text-gray-500">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                Ready
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                
+                <!-- Section 1: User Payment Session Generation -->
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h2 class="text-lg font-medium text-gray-900 flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            Payment Session
+                        </h2>
+                        <p class="mt-1 text-sm text-gray-500">Configure API and create user payment session</p>
+                    </div>
+                    <div class="p-6 space-y-6">
+                        <!-- API Configuration -->
+                        <div>
+                            <label for="apiKey" class="block text-sm font-medium text-gray-700 mb-2">
+                                API Key <span class="text-red-500">*</span>
+                            </label>
+                            <input 
+                                type="password" 
+                                id="apiKey" 
+                                placeholder="Enter your API key"
+                                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                required
+                            >
+                            <p class="mt-1 text-xs text-gray-500">API key for X-API-KEY header</p>
+                        </div>
+
+                        <div>
+                            <label for="apiBaseUrl" class="block text-sm font-medium text-gray-700 mb-2">API Base URL</label>
+                            <input 
+                                type="url" 
+                                id="apiBaseUrl" 
+                                placeholder="Enter your base URL"
+                                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                            >
+                        </div>
+
+                        <!-- Session Parameters -->
+                        <div class="border-t border-gray-100 pt-6">
+                            <h3 class="text-sm font-medium text-gray-900 mb-4">Session Parameters</h3>
+                            
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="sessionAmount" class="block text-sm font-medium text-gray-700 mb-2">
+                                        Amount <span class="text-red-500">*</span>
+                                    </label>
+                                    <input 
+                                        type="number" 
+                                        id="sessionAmount" 
+                                        value="19.99" 
+                                        step="0.01" 
+                                        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                        required
+                                    >
+                                    <p class="mt-1 text-xs text-gray-500">Use 0 for recurring payments</p>
+                                </div>
+
+                                <div>
+                                    <label for="scope" class="block text-sm font-medium text-gray-700 mb-2">
+                                        Scope <span class="text-red-500">*</span>
+                                    </label>
+                                    <select 
+                                        id="scope" 
+                                        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                        required
+                                    >
+                                        <option value="MEMBER_ACCOUNT">Member Account</option>
+                                        <option value="ECOM" selected>E-Commerce</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="mt-4">
+                                <label for="referenceText" class="block text-sm font-medium text-gray-700 mb-2">Reference Text</label>
+                                <input 
+                                    type="text" 
+                                    id="referenceText" 
+                                    placeholder="Reference for bank statement"
+                                    class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                >
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                                <div>
+                                    <label for="customerId" class="block text-sm font-medium text-gray-700 mb-2">Customer ID</label>
+                                    <input 
+                                        type="number" 
+                                        id="customerId" 
+                                        placeholder="ERP Customer ID"
+                                        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                    >
+                                </div>
+
+                                <div>
+                                    <label for="finionPayCustomerId" class="block text-sm font-medium text-gray-700 mb-2">Finion Pay Customer ID</label>
+                                    <input 
+                                        type="text" 
+                                        id="finionPayCustomerId" 
+                                        placeholder="UUID"
+                                        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                    >
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Payment Methods -->
+                        <div class="border-t border-gray-100 pt-6">
+                            <h3 class="text-sm font-medium text-gray-900 mb-4">Permitted Payment Methods</h3>
+                            <div class="grid grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
+                                <label class="flex items-center">
+                                    <input type="checkbox" value="CASH" class="payment-method-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                    <span class="ml-2">Cash</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" value="BANK_TRANSFER" class="payment-method-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                    <span class="ml-2">Bank Transfer</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" value="BACS" class="payment-method-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                    <span class="ml-2">BACS DD</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" value="SEPA" class="payment-method-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                    <span class="ml-2">SEPA DD</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" value="CH_DD" class="payment-method-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                    <span class="ml-2">CH DD</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" value="LSV" class="payment-method-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                    <span class="ml-2">LSV DD</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" value="CREDIT_CARD" class="payment-method-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                    <span class="ml-2">Credit Card</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" value="TWINT" class="payment-method-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                    <span class="ml-2">Twint</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" value="PAYPAL" class="payment-method-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                    <span class="ml-2">PayPal</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" value="BANCONTACT" class="payment-method-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                    <span class="ml-2">Bancontact</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" value="IDEAL" class="payment-method-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                    <span class="ml-2">iDEAL</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Debug Mode -->
+                        <div class="border-t border-gray-100 pt-6">
+                            <label class="flex items-center">
+                                <input type="checkbox" id="debugMode" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                <span class="ml-2 text-sm font-medium text-gray-900">Debug Mode</span>
+                            </label>
+                            <p class="mt-1 text-xs text-gray-500">Show detailed API request/response information</p>
+                        </div>
+
+                        <button 
+                            id="createSessionBtn" 
+                            type="button"
+                            class="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
+                        >
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                            </svg>
+                            Create Payment Session
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Section 2: Component Mounting Parameters -->
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h2 class="text-lg font-medium text-gray-900 flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            </svg>
+                            Widget Configuration
+                        </h2>
+                        <p class="mt-1 text-sm text-gray-500">Configure widget mounting and display options</p>
+                    </div>
+                    <div class="p-6 space-y-6">
+                        <div>
+                            <div class="flex items-center justify-between mb-2">
+                                <label for="userSessionToken" class="block text-sm font-medium text-gray-700">
+                                    User Session Token <span class="text-red-500">*</span>
+                                </label>
+                                <div class="flex items-center space-x-2">
+                                    <label class="flex items-center text-sm">
+                                        <input type="checkbox" id="manualTokenMode" class="rounded border-gray-300 text-green-600 focus:ring-green-500">
+                                        <span class="ml-2 text-gray-600">Manual Entry</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <textarea 
+                                id="userSessionToken" 
+                                rows="3"
+                                placeholder="Token will appear here after creating session, or enable manual entry"
+                                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm bg-gray-50"
+                                readonly
+                            ></textarea>
+                            <div id="tokenInfo" class="mt-1 text-xs text-gray-500 hidden">
+                                <span id="tokenExpiry"></span>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label for="widgetAmount" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Amount (cents) <span class="text-red-500">*</span>
+                                </label>
+                                <input 
+                                    type="number" 
+                                    id="widgetAmount" 
+                                    value="2000" 
+                                    min="0"
+                                    class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
+                                    required
+                                >
+                                <p class="mt-1 text-xs text-gray-500">Payment amount in cents</p>
+                            </div>
+                            <div>
+                                <label for="currency" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Currency <span class="text-red-500">*</span>
+                                </label>
+                                <select 
+                                    id="currency" 
+                                    class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
+                                    required
+                                >
+                                    <option value="EUR" selected>EUR - Euro</option>
+                                    <option value="USD">USD - US Dollar</option>
+                                    <option value="GBP">GBP - British Pound</option>
+                                    <option value="CHF">CHF - Swiss Franc</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label for="countryCode" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Country Code <span class="text-red-500">*</span>
+                                </label>
+                                <select 
+                                    id="countryCode" 
+                                    class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
+                                    required
+                                >
+                                    <option value="DE" selected>DE - Germany</option>
+                                    <option value="US">US - United States</option>
+                                    <option value="GB">GB - United Kingdom</option>
+                                    <option value="CH">CH - Switzerland</option>
+                                    <option value="FR">FR - France</option>
+                                    <option value="IT">IT - Italy</option>
+                                    <option value="ES">ES - Spain</option>
+                                    <option value="NL">NL - Netherlands</option>
+                                    <option value="BE">BE - Belgium</option>
+                                    <option value="AT">AT - Austria</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="environment" class="block text-sm font-medium text-gray-700 mb-2">Environment</label>
+                                <select 
+                                    id="environment" 
+                                    class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
+                                >
+                                    <option value="test">Test</option>
+                                    <option value="sandbox" selected>Sandbox</option>
+                                    <option value="live">Live</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label for="locale" class="block text-sm font-medium text-gray-700 mb-2">Locale</label>
+                            <select 
+                                id="locale" 
+                                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
+                            >
+                                <option value="en-US" selected>en-US - English (US)</option>
+                                <option value="en-GB">en-GB - English (UK)</option>
+                                <option value="de-DE">de-DE - German</option>
+                                <option value="fr-FR">fr-FR - French</option>
+                                <option value="it-IT">it-IT - Italian</option>
+                                <option value="es-ES">es-ES - Spanish</option>
+                                <option value="nl-NL">nl-NL - Dutch</option>
+                            </select>
+                        </div>
+
+                        <button 
+                            id="mountWidgetBtn" 
+                            type="button"
+                            disabled
+                            class="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-400 cursor-not-allowed transition-colors duration-200"
+                        >
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                            </svg>
+                            Mount Payment Widget
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Activity Logs Section -->
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-lg font-medium text-gray-900 flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            Activity Logs
+                        </h2>
+                        <div class="flex items-center space-x-4">
+                            <button 
+                                id="clearStorageBtn" 
+                                type="button"
+                                class="text-sm text-orange-500 hover:text-orange-700 flex items-center"
+                                title="Clear saved form data"
+                            >
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8l4 4m0 0l4-4m-4 4V3m0 13a9 9 0 110-18 9 9 0 010 18z"></path>
+                                </svg>
+                                Clear Storage
+                            </button>
+                            <button 
+                                id="clearLogsBtn" 
+                                type="button"
+                                class="text-sm text-gray-500 hover:text-gray-700 flex items-center"
+                            >
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
+                                Clear Logs
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-6">
+                    <div id="status-log" class="h-64 bg-gray-900 text-white text-xs font-mono rounded-md overflow-y-auto p-4 space-y-2">
+                        <div class="text-gray-400 flex items-center">
+                            <span class="w-16 text-gray-500">[INIT]</span>
+                            <span>Payment Widget Test Suite initialized</span>
+                        </div>
+                        <div class="text-gray-400 flex items-center">
+                            <span class="w-16 text-gray-500">[INFO]</span>
+                            <span>Ready to create payment session...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payment Widget Container -->
+            <div class="mt-8 bg-white rounded-lg shadow-sm border border-gray-200">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h2 class="text-lg font-medium text-gray-900 flex items-center">
+                        <svg class="w-5 h-5 mr-2 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                        </svg>
+                        Payment Widget
+                    </h2>
+                    <p class="mt-1 text-sm text-gray-500">Payment widget will be mounted here</p>
+                </div>
+                <div class="p-6">
+                    <div id="payment-widget-container"></div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- The JavaScript component to be loaded -->
+    <script src="https://spa-payment-widget-tgg.s3.eu-west-1.amazonaws.com/spa-payment/widget.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
