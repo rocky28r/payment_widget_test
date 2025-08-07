@@ -365,50 +365,12 @@ async function initializeWidget(config) {
     // Unmount existing widget first
     await unmountWidget();
     
-    // Clear any widget-related cached data to prevent client_key issues
+    // Save current form data to preserve it during widget initialization
     try {
-        logStatus('Clearing all browser storage to prevent cached client_key issues...', 'info');
-        
-        // Clear ALL localStorage (aggressive approach)
-        const localStorageCount = localStorage.length;
-        localStorage.clear();
-        
-        // Clear ALL sessionStorage (aggressive approach)
-        const sessionStorageCount = sessionStorage.length;
-        sessionStorage.clear();
-        
-        // Clear cookies that might be related to the widget
-        document.cookie.split(";").forEach(cookie => {
-            const eqPos = cookie.indexOf("=");
-            const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
-            if (name.includes('spa-payment') || name.includes('widget') || name.includes('client') || name.includes('payment')) {
-                document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=${window.location.hostname}`;
-                document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
-            }
-        });
-        
-        // Try to clear IndexedDB databases that might be widget-related
-        if ('indexedDB' in window) {
-            try {
-                const dbs = await indexedDB.databases();
-                for (const db of dbs) {
-                    if (db.name && (db.name.includes('spa-payment') || db.name.includes('widget') || db.name.includes('payment'))) {
-                        indexedDB.deleteDatabase(db.name);
-                        logStatus(`Cleared IndexedDB: ${db.name}`, 'info');
-                    }
-                }
-            } catch (idbError) {
-                logStatus('Could not access IndexedDB', 'warn');
-            }
-        }
-        
-        logStatus(`Cleared ${localStorageCount + sessionStorageCount} storage items and widget cookies`, 'success');
-        
-        // Wait a moment for cleanup to complete
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
+        logStatus('Preserving form data during widget initialization...', 'info');
+        saveToLocalStorage();
     } catch (error) {
-        logStatus(`Storage cleanup error: ${error.message}`, 'warn');
+        logStatus(`Form data preservation error: ${error.message}`, 'warn');
     }
     
     // Force reload the widget script to get a fresh instance
