@@ -21,7 +21,7 @@
                     </div>
                     <div class="flex items-center space-x-4">
                         <div class="text-sm text-gray-500">
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            <span id="statusIndicator" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                 Ready
                             </span>
                         </div>
@@ -251,38 +251,6 @@
 
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                                <label for="widgetAmount" class="block text-sm font-medium text-gray-700 mb-2">
-                                    Amount (cents) <span class="text-red-500">*</span>
-                                </label>
-                                <input 
-                                    type="number" 
-                                    id="widgetAmount" 
-                                    value="2000" 
-                                    min="0"
-                                    class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
-                                    required
-                                >
-                                <p class="mt-1 text-xs text-gray-500">Payment amount in cents</p>
-                            </div>
-                            <div>
-                                <label for="currency" class="block text-sm font-medium text-gray-700 mb-2">
-                                    Currency <span class="text-red-500">*</span>
-                                </label>
-                                <select 
-                                    id="currency" 
-                                    class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
-                                    required
-                                >
-                                    <option value="EUR" selected>EUR - Euro</option>
-                                    <option value="USD">USD - US Dollar</option>
-                                    <option value="GBP">GBP - British Pound</option>
-                                    <option value="CHF">CHF - Swiss Franc</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
                                 <label for="countryCode" class="block text-sm font-medium text-gray-700 mb-2">
                                     Country Code <span class="text-red-500">*</span>
                                 </label>
@@ -330,6 +298,99 @@
                                 <option value="es-ES">es-ES - Spanish</option>
                                 <option value="nl-NL">nl-NL - Dutch</option>
                             </select>
+                        </div>
+
+                        <!-- Styling Configuration -->
+                        <div class="border-t border-gray-100 pt-6">
+                            <h3 class="text-sm font-medium text-gray-900 mb-4">Custom Styling</h3>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="primaryColor" class="block text-sm font-medium text-gray-700 mb-2">Primary Color</label>
+                                    <input 
+                                        type="text" 
+                                        id="primaryColor" 
+                                        placeholder="#1a73e8"
+                                        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
+                                    >
+                                    <p class="mt-1 text-xs text-gray-500">Hex color code</p>
+                                </div>
+                                <div>
+                                    <label for="fontFamily" class="block text-sm font-medium text-gray-700 mb-2">Font Family</label>
+                                    <input 
+                                        type="text" 
+                                        id="fontFamily" 
+                                        placeholder="Inter, sans-serif"
+                                        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
+                                    >
+                                </div>
+                                <div>
+                                    <label for="borderRadius" class="block text-sm font-medium text-gray-700 mb-2">Border Radius</label>
+                                    <input 
+                                        type="text" 
+                                        id="borderRadius" 
+                                        placeholder="8px"
+                                        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
+                                    >
+                                </div>
+                                <div>
+                                    <label for="errorColor" class="block text-sm font-medium text-gray-700 mb-2">Error Color</label>
+                                    <input 
+                                        type="text" 
+                                        id="errorColor" 
+                                        placeholder="#dc2626"
+                                        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
+                                    >
+                                </div>
+                                <div>
+                                    <label for="successColor" class="block text-sm font-medium text-gray-700 mb-2">Success Color</label>
+                                    <input 
+                                        type="text" 
+                                        id="successColor" 
+                                        placeholder="#16a34a"
+                                        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
+                                    >
+                                </div>
+                                <div>
+                                    <label for="warningColor" class="block text-sm font-medium text-gray-700 mb-2">Warning Color</label>
+                                    <input 
+                                        type="text" 
+                                        id="warningColor" 
+                                        placeholder="#ea580c"
+                                        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
+                                    >
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- i18n Configuration -->
+                        <div class="border-t border-gray-100 pt-6">
+                            <h3 class="text-sm font-medium text-gray-900 mb-4">Custom Translations</h3>
+                            
+                            <!-- Translation Key-Value Pairs -->
+                            <div id="translationPairs" class="space-y-3 mb-4">
+                                <!-- Translation pairs will be added here dynamically -->
+                            </div>
+                            
+                            <!-- Add New Translation Button -->
+                            <button 
+                                type="button" 
+                                id="addTranslationBtn"
+                                class="flex items-center px-3 py-2 text-sm text-green-600 hover:text-green-700 border border-green-300 hover:border-green-400 rounded-md transition-colors"
+                            >
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                </svg>
+                                Add Translation
+                            </button>
+                            <p class="mt-2 text-xs text-gray-500">Add custom translations to override default widget text</p>
+                            
+                            <div class="mt-4">
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="devMode" class="rounded border-gray-300 text-green-600 focus:ring-green-500">
+                                    <span class="ml-2 text-sm font-medium text-gray-900">Development Mode</span>
+                                </label>
+                                <p class="mt-1 text-xs text-gray-500">Show translation keys in the widget for debugging</p>
+                            </div>
                         </div>
 
                         <button 

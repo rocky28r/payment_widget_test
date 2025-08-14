@@ -8,16 +8,102 @@ const debugModeCheckbox = document.getElementById('debugMode');
 const manualTokenModeCheckbox = document.getElementById('manualTokenMode');
 const userSessionTokenField = document.getElementById('userSessionToken');
 let widgetContainer = document.getElementById('payment-widget-container');
+const statusIndicator = document.getElementById('statusIndicator');
 
 // Session state
 let currentSessionToken = null;
 let sessionTokenExpiry = null;
 let debugMode = false;
 let widgetInstance = null;
+let isReturningFromRedirect = false;
+
+// Translation management
+let translationPairs = [];
 
 // Local Storage Keys
 const STORAGE_KEY = 'paymentWidgetTestSuite';
-const STORAGE_VERSION = '1.0';
+const STORAGE_VERSION = '1.1';
+
+// URL Parameter Detection
+function detectRedirectReturn() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const redirectIndicators = [
+        'payment_status',
+        'payment_result',
+        'status',
+        'result',
+        'return',
+        'callback',
+        'success',
+        'error',
+        'cancel',
+        'cancelled',
+        'payment_id',
+        'transaction_id'
+    ];
+    
+    // Check if any redirect indicator parameters exist
+    const hasRedirectParams = redirectIndicators.some(param => urlParams.has(param));
+    
+    if (hasRedirectParams) {
+        logStatus('Detected return from payment redirect', 'info');
+        updateStatusIndicator('redirect', 'Redirect Return');
+        const params = {};
+        for (const [key, value] of urlParams.entries()) {
+            params[key] = value;
+        }
+        logDebugInfo('Redirect Return Parameters', params);
+        return true;
+    }
+    
+    return false;
+}
+
+function updateStatusIndicator(status, message) {
+    const statusClasses = {
+        ready: 'bg-green-100 text-green-800',
+        processing: 'bg-yellow-100 text-yellow-800',
+        redirect: 'bg-blue-100 text-blue-800',
+        success: 'bg-green-100 text-green-800',
+        error: 'bg-red-100 text-red-800'
+    };
+    
+    statusIndicator.className = `inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusClasses[status] || statusClasses.ready}`;
+    statusIndicator.textContent = message;
+}
+
+function cleanupRedirectParams() {
+    // Remove redirect parameters from URL without reloading the page
+    const url = new URL(window.location);
+    const redirectIndicators = [
+        'payment_status',
+        'payment_result', 
+        'status',
+        'result',
+        'return',
+        'callback',
+        'success',
+        'error',
+        'cancel',
+        'cancelled',
+        'payment_id',
+        'transaction_id'
+    ];
+    
+    let paramsRemoved = false;
+    redirectIndicators.forEach(param => {
+        if (url.searchParams.has(param)) {
+            url.searchParams.delete(param);
+            paramsRemoved = true;
+        }
+    });
+    
+    if (paramsRemoved) {
+        window.history.replaceState({}, document.title, url.pathname + url.search);
+        logStatus('Cleaned up redirect parameters from URL', 'info');
+        updateStatusIndicator('ready', 'Ready');
+    }
+}
 
 // Utility Functions
 function logStatus(message, type = 'info', showTimestamp = true) {
@@ -131,15 +217,29 @@ function saveToLocalStorage() {
             debugMode: document.getElementById('debugMode').checked,
             
             // Widget Configuration
-            widgetAmount: document.getElementById('widgetAmount').value,
-            currency: document.getElementById('currency').value,
             countryCode: document.getElementById('countryCode').value,
             environment: document.getElementById('environment').value,
             locale: document.getElementById('locale').value,
             manualTokenMode: document.getElementById('manualTokenMode').checked,
             
+            // Styling Configuration
+            primaryColor: document.getElementById('primaryColor').value,
+            fontFamily: document.getElementById('fontFamily').value,
+            borderRadius: document.getElementById('borderRadius').value,
+            errorColor: document.getElementById('errorColor').value,
+            successColor: document.getElementById('successColor').value,
+            warningColor: document.getElementById('warningColor').value,
+            
+            // i18n Configuration
+            translationPairs: translationPairs,
+            devMode: document.getElementById('devMode').checked,
+            
             // Session token (only if in manual mode)
-            userSessionToken: document.getElementById('manualTokenMode').checked ? document.getElementById('userSessionToken').value : ''
+            userSessionToken: document.getElementById('manualTokenMode').checked ? document.getElementById('userSessionToken').value : '',
+            
+            // Store current session info for redirect recovery
+            currentSessionToken: currentSessionToken,
+            sessionTokenExpiry: sessionTokenExpiry ? sessionTokenExpiry.toISOString() : null
         };
         
         localStorage.setItem(STORAGE_KEY, JSON.stringify(formData));
@@ -188,11 +288,33 @@ function loadFromLocalStorage() {
         }
         
         // Restore Widget Configuration
-        if (formData.widgetAmount) document.getElementById('widgetAmount').value = formData.widgetAmount;
-        if (formData.currency) document.getElementById('currency').value = formData.currency;
         if (formData.countryCode) document.getElementById('countryCode').value = formData.countryCode;
         if (formData.environment) document.getElementById('environment').value = formData.environment;
         if (formData.locale) document.getElementById('locale').value = formData.locale;
+        
+        // Restore Styling Configuration
+        if (formData.primaryColor) document.getElementById('primaryColor').value = formData.primaryColor;
+        if (formData.fontFamily) document.getElementById('fontFamily').value = formData.fontFamily;
+        if (formData.borderRadius) document.getElementById('borderRadius').value = formData.borderRadius;
+        if (formData.errorColor) document.getElementById('errorColor').value = formData.errorColor;
+        if (formData.successColor) document.getElementById('successColor').value = formData.successColor;
+        if (formData.warningColor) document.getElementById('warningColor').value = formData.warningColor;
+        
+        // Restore i18n Configuration
+        if (formData.translationPairs && Array.isArray(formData.translationPairs)) {
+            translationPairs = formData.translationPairs;
+            // Clear container and re-render all translation pairs
+            const container = document.getElementById('translationPairs');
+            if (container) {
+                container.innerHTML = '';
+                translationPairs.forEach(pair => {
+                    renderTranslationPair(pair);
+                });
+            }
+        }
+        if (formData.devMode !== undefined) {
+            document.getElementById('devMode').checked = formData.devMode;
+        }
         
         // Restore manual token mode and token
         if (formData.manualTokenMode !== undefined) {
@@ -203,6 +325,20 @@ function loadFromLocalStorage() {
             if (formData.manualTokenMode && formData.userSessionToken) {
                 document.getElementById('userSessionToken').value = formData.userSessionToken;
                 updateTokenUI(formData.userSessionToken, null, true);
+            }
+        }
+        
+        // Restore session token from previous session (for redirect recovery)
+        if (formData.currentSessionToken) {
+            currentSessionToken = formData.currentSessionToken;
+            if (formData.sessionTokenExpiry) {
+                sessionTokenExpiry = new Date(formData.sessionTokenExpiry);
+            }
+            
+            // Update UI if not in manual mode
+            if (!formData.manualTokenMode) {
+                updateTokenUI(currentSessionToken, sessionTokenExpiry, false);
+                logStatus('Session token restored from previous session', 'success');
             }
         }
         
@@ -248,6 +384,106 @@ function logDebugInfo(title, data) {
         statusLog.appendChild(debugEntry);
         statusLog.scrollTop = statusLog.scrollHeight;
     }
+}
+
+// Translation Management Functions
+function generateTranslationId() {
+    return 'translation_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+}
+
+function addTranslationPair(key = '', value = '', id = null) {
+    const pairId = id || generateTranslationId();
+    const pairObj = { id: pairId, key, value };
+    
+    if (!id) {
+        translationPairs.push(pairObj);
+    }
+    
+    renderTranslationPair(pairObj);
+    saveToLocalStorage();
+}
+
+function removeTranslationPair(id) {
+    translationPairs = translationPairs.filter(pair => pair.id !== id);
+    const pairElement = document.getElementById(id);
+    if (pairElement) {
+        pairElement.remove();
+    }
+    saveToLocalStorage();
+}
+
+function updateTranslationPair(id, key, value) {
+    const pairIndex = translationPairs.findIndex(pair => pair.id === id);
+    if (pairIndex !== -1) {
+        translationPairs[pairIndex].key = key;
+        translationPairs[pairIndex].value = value;
+        saveToLocalStorage();
+    }
+}
+
+function renderTranslationPair(pairObj) {
+    const container = document.getElementById('translationPairs');
+    
+    const pairDiv = document.createElement('div');
+    pairDiv.id = pairObj.id;
+    pairDiv.className = 'flex items-center space-x-2 p-3 bg-gray-50 rounded-md';
+    
+    pairDiv.innerHTML = `
+        <div class="flex-1">
+            <input 
+                type="text" 
+                placeholder="Translation key (e.g., button.pay)"
+                value="${pairObj.key}"
+                class="translation-key block w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500 focus:border-green-500"
+            >
+        </div>
+        <div class="flex-1">
+            <input 
+                type="text" 
+                placeholder="Custom value"
+                value="${pairObj.value}"
+                class="translation-value block w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500 focus:border-green-500"
+            >
+        </div>
+        <button 
+            type="button" 
+            class="remove-translation text-red-500 hover:text-red-700 p-1"
+            title="Remove translation"
+        >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+            </svg>
+        </button>
+    `;
+    
+    container.appendChild(pairDiv);
+    
+    // Add event listeners for this pair
+    const keyInput = pairDiv.querySelector('.translation-key');
+    const valueInput = pairDiv.querySelector('.translation-value');
+    const removeBtn = pairDiv.querySelector('.remove-translation');
+    
+    keyInput.addEventListener('input', () => {
+        updateTranslationPair(pairObj.id, keyInput.value, valueInput.value);
+    });
+    
+    valueInput.addEventListener('input', () => {
+        updateTranslationPair(pairObj.id, keyInput.value, valueInput.value);
+    });
+    
+    removeBtn.addEventListener('click', () => {
+        removeTranslationPair(pairObj.id);
+    });
+}
+
+function getTranslationsAsObject() {
+    const translations = {};
+    translationPairs.forEach(pair => {
+        if (pair.key.trim() && pair.value.trim()) {
+            translations[pair.key.trim()] = pair.value.trim();
+        }
+    });
+    return translations;
 }
 
 function updateTokenUI(token, expiry = null, isManual = false) {
@@ -543,12 +779,6 @@ mountWidgetBtn.addEventListener('click', async () => {
         return;
     }
     
-    // Validate required widget configuration
-    const widgetAmount = parseInt(document.getElementById('widgetAmount').value, 10);
-    if (isNaN(widgetAmount) || widgetAmount < 0) {
-        logStatus('Invalid amount. Please enter a valid positive number.', 'error');
-        return;
-    }
     
     setButtonLoading(mountWidgetBtn, true, 'Mounting Widget...');
     
@@ -558,8 +788,6 @@ mountWidgetBtn.addEventListener('click', async () => {
             userSessionToken: currentSessionToken,
             environment: document.getElementById('environment').value,
             container: 'payment-widget-container',
-            amount: parseInt(document.getElementById('widgetAmount').value, 10),
-            currency: document.getElementById('currency').value,
             countryCode: document.getElementById('countryCode').value,
             locale: document.getElementById('locale').value,
             onSuccess: (paymentToken) => {
@@ -574,9 +802,43 @@ mountWidgetBtn.addEventListener('click', async () => {
             }
         };
         
+        // Add styling configuration if any values are provided
+        const styling = {};
+        const primaryColor = document.getElementById('primaryColor').value.trim();
+        const fontFamily = document.getElementById('fontFamily').value.trim();
+        const borderRadius = document.getElementById('borderRadius').value.trim();
+        const errorColor = document.getElementById('errorColor').value.trim();
+        const successColor = document.getElementById('successColor').value.trim();
+        const warningColor = document.getElementById('warningColor').value.trim();
+        
+        if (primaryColor) styling.primaryColor = primaryColor;
+        if (fontFamily) styling.fontFamily = fontFamily;
+        if (borderRadius) styling.borderRadius = borderRadius;
+        if (errorColor) styling.errorColor = errorColor;
+        if (successColor) styling.successColor = successColor;
+        if (warningColor) styling.warningColor = warningColor;
+        
+        if (Object.keys(styling).length > 0) {
+            config.styling = styling;
+        }
+        
+        // Add i18n configuration if translations are provided
+        const translations = getTranslationsAsObject();
+        if (Object.keys(translations).length > 0) {
+            config.i18n = translations;
+            logStatus(`Custom translations loaded (${Object.keys(translations).length} keys)`, 'info');
+        }
+        
+        // Add devMode if enabled
+        const devModeEnabled = document.getElementById('devMode').checked;
+        if (devModeEnabled) {
+            config.devMode = true;
+            logStatus('Development mode enabled - translation keys will be visible', 'info');
+        }
+        
         const isRemount = widgetInstance !== null;
         logStatus(`${isRemount ? 'Remounting' : 'Mounting'} payment widget with configuration...`);
-        logStatus(`Environment: ${config.environment}, Amount: ${config.amount}, Currency: ${config.currency}, Country: ${config.countryCode}`);
+        logStatus(`Environment: ${config.environment}, Country: ${config.countryCode}`);
         
         await initializeWidget(config);
         
@@ -612,7 +874,7 @@ clearStorageBtn.addEventListener('click', () => {
 function setupAutoSave() {
     const formElements = [
         'apiKey', 'apiBaseUrl', 'sessionAmount', 'scope', 'referenceText', 'customerId', 'finionPayCustomerId',
-        'widgetAmount', 'currency', 'countryCode', 'environment', 'locale'
+        'countryCode', 'environment', 'locale', 'primaryColor', 'fontFamily', 'borderRadius', 'errorColor', 'successColor', 'warningColor'
     ];
     
     // Debounce function to limit save frequency
@@ -639,6 +901,11 @@ function setupAutoSave() {
     // Special handling for toggles
     debugModeCheckbox.addEventListener('change', debouncedSave);
     manualTokenModeCheckbox.addEventListener('change', debouncedSave);
+    
+    const devModeCheckbox = document.getElementById('devMode');
+    if (devModeCheckbox) {
+        devModeCheckbox.addEventListener('change', debouncedSave);
+    }
     
     // Save manual token when entered
     userSessionTokenField.addEventListener('input', () => {
@@ -691,9 +958,105 @@ userSessionTokenField.addEventListener('input', () => {
     }
 });
 
+// Auto-mount widget after redirect return
+async function handleRedirectReturn() {
+    if (!currentSessionToken) {
+        logStatus('No session token available for redirect return', 'warn');
+        return;
+    }
+    
+    // Check if token is expired
+    if (sessionTokenExpiry && new Date() > sessionTokenExpiry) {
+        logStatus('Session token expired, cannot auto-mount widget after redirect', 'error');
+        return;
+    }
+    
+    logStatus('Auto-mounting widget after redirect return...', 'info');
+    updateStatusIndicator('processing', 'Auto-mounting...');
+    
+    try {
+        // Collect widget configuration (same as manual mount)
+        const config = {
+            userSessionToken: currentSessionToken,
+            environment: document.getElementById('environment').value,
+            container: 'payment-widget-container',
+            countryCode: document.getElementById('countryCode').value,
+            locale: document.getElementById('locale').value,
+            onSuccess: (paymentToken) => {
+                const successMsg = `Payment completed after redirect! Token: ${paymentToken}`;
+                logStatus(successMsg, 'success');
+                console.log('Payment successful after redirect:', paymentToken);
+                updateStatusIndicator('success', 'Payment Complete!');
+                
+                // Clean up URL parameters after successful payment
+                setTimeout(() => {
+                    cleanupRedirectParams();
+                }, 2000);
+            },
+            onError: (error) => {
+                const errorMsg = `Payment error after redirect: ${error.message || 'Unknown error'}`;
+                logStatus(errorMsg, 'error');
+                console.error('Payment widget error after redirect:', error);
+                updateStatusIndicator('error', 'Payment Error');
+                
+                // Clean up URL parameters even on error
+                setTimeout(() => {
+                    cleanupRedirectParams();
+                }, 2000);
+            }
+        };
+        
+        // Add styling configuration if any values are provided (same as manual mount)
+        const styling = {};
+        const primaryColor = document.getElementById('primaryColor').value.trim();
+        const fontFamily = document.getElementById('fontFamily').value.trim();
+        const borderRadius = document.getElementById('borderRadius').value.trim();
+        const errorColor = document.getElementById('errorColor').value.trim();
+        const successColor = document.getElementById('successColor').value.trim();
+        const warningColor = document.getElementById('warningColor').value.trim();
+        
+        if (primaryColor) styling.primaryColor = primaryColor;
+        if (fontFamily) styling.fontFamily = fontFamily;
+        if (borderRadius) styling.borderRadius = borderRadius;
+        if (errorColor) styling.errorColor = errorColor;
+        if (successColor) styling.successColor = successColor;
+        if (warningColor) styling.warningColor = warningColor;
+        
+        if (Object.keys(styling).length > 0) {
+            config.styling = styling;
+        }
+        
+        // Add i18n configuration if translations are provided (same as manual mount)
+        const translations = getTranslationsAsObject();
+        if (Object.keys(translations).length > 0) {
+            config.i18n = translations;
+        }
+        
+        // Add devMode if enabled (same as manual mount)
+        const devModeEnabled = document.getElementById('devMode').checked;
+        if (devModeEnabled) {
+            config.devMode = true;
+        }
+        
+        logStatus(`Auto-mounting with Environment: ${config.environment}, Country: ${config.countryCode}`);
+        
+        await initializeWidget(config);
+        logStatus('Widget auto-mounted successfully after redirect', 'success');
+        updateStatusIndicator('ready', 'Widget Mounted');
+        
+    } catch (error) {
+        logStatus(`Auto-mount failed after redirect: ${error.message}`, 'error');
+        console.error('Failed to auto-mount widget after redirect:', error);
+        updateStatusIndicator('error', 'Auto-mount Failed');
+    }
+}
+
 // Initialize the application
 document.addEventListener('DOMContentLoaded', () => {
     logStatus('Payment Widget Test Suite loaded successfully', 'success', false);
+    
+    // Check if returning from payment redirect
+    isReturningFromRedirect = detectRedirectReturn();
     
     // Load saved data from local storage
     const dataRestored = loadFromLocalStorage();
@@ -703,6 +1066,14 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Setup auto-save functionality
     setupAutoSave();
+    
+    // Setup translation management
+    const addTranslationBtn = document.getElementById('addTranslationBtn');
+    if (addTranslationBtn) {
+        addTranslationBtn.addEventListener('click', () => {
+            addTranslationPair();
+        });
+    }
     
     // Add mutual exclusivity for customer ID fields
     const customerIdField = document.getElementById('customerId');
@@ -727,4 +1098,12 @@ document.addEventListener('DOMContentLoaded', () => {
             customerIdField.classList.remove('bg-gray-100');
         }
     });
+    
+    // Handle redirect return if detected
+    if (isReturningFromRedirect) {
+        // Wait a bit for all initialization to complete
+        setTimeout(() => {
+            handleRedirectReturn();
+        }, 500);
+    }
 });
