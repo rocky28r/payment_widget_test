@@ -1,6 +1,5 @@
 // DOM Elements
 const createSessionBtn = document.getElementById('createSessionBtn');
-const mountWidgetBtn = document.getElementById('mountWidgetBtn');
 const clearLogsBtn = document.getElementById('clearLogsBtn');
 const clearStorageBtn = document.getElementById('clearStorageBtn');
 const statusLog = document.getElementById('status-log');
@@ -187,15 +186,6 @@ function setButtonLoading(button, isLoading, loadingText = 'Loading...') {
     }
 }
 
-function enableMountButton() {
-    mountWidgetBtn.disabled = false;
-    mountWidgetBtn.className = 'w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200';
-}
-
-function disableMountButton() {
-    mountWidgetBtn.disabled = true;
-    mountWidgetBtn.className = 'w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-400 cursor-not-allowed transition-colors duration-200';
-}
 
 // Local Storage Functions
 function saveToLocalStorage() {
@@ -223,12 +213,13 @@ function saveToLocalStorage() {
             manualTokenMode: document.getElementById('manualTokenMode').checked,
             
             // Styling Configuration
+            textColorMain: document.getElementById('textColorMain').value,
+            textColorSecondary: document.getElementById('textColorSecondary').value,
             primaryColor: document.getElementById('primaryColor').value,
-            fontFamily: document.getElementById('fontFamily').value,
+            secondaryColor: document.getElementById('secondaryColor').value,
+            borderColor: document.getElementById('borderColor').value,
             borderRadius: document.getElementById('borderRadius').value,
-            errorColor: document.getElementById('errorColor').value,
-            successColor: document.getElementById('successColor').value,
-            warningColor: document.getElementById('warningColor').value,
+            boxShadow: document.getElementById('boxShadow').value,
             
             // i18n Configuration
             translationPairs: translationPairs,
@@ -293,12 +284,13 @@ function loadFromLocalStorage() {
         if (formData.locale) document.getElementById('locale').value = formData.locale;
         
         // Restore Styling Configuration
+        if (formData.textColorMain) document.getElementById('textColorMain').value = formData.textColorMain;
+        if (formData.textColorSecondary) document.getElementById('textColorSecondary').value = formData.textColorSecondary;
         if (formData.primaryColor) document.getElementById('primaryColor').value = formData.primaryColor;
-        if (formData.fontFamily) document.getElementById('fontFamily').value = formData.fontFamily;
+        if (formData.secondaryColor) document.getElementById('secondaryColor').value = formData.secondaryColor;
+        if (formData.borderColor) document.getElementById('borderColor').value = formData.borderColor;
         if (formData.borderRadius) document.getElementById('borderRadius').value = formData.borderRadius;
-        if (formData.errorColor) document.getElementById('errorColor').value = formData.errorColor;
-        if (formData.successColor) document.getElementById('successColor').value = formData.successColor;
-        if (formData.warningColor) document.getElementById('warningColor').value = formData.warningColor;
+        if (formData.boxShadow) document.getElementById('boxShadow').value = formData.boxShadow;
         
         // Restore i18n Configuration
         if (formData.translationPairs && Array.isArray(formData.translationPairs)) {
@@ -325,6 +317,12 @@ function loadFromLocalStorage() {
             if (formData.manualTokenMode && formData.userSessionToken) {
                 document.getElementById('userSessionToken').value = formData.userSessionToken;
                 updateTokenUI(formData.userSessionToken, null, true);
+                
+                // Auto-mount widget after manual token restoration
+                setTimeout(async () => {
+                    logStatus('Auto-mounting widget with restored manual token...', 'info');
+                    await autoMountWidget();
+                }, 100);
             }
         }
         
@@ -339,6 +337,12 @@ function loadFromLocalStorage() {
             if (!formData.manualTokenMode) {
                 updateTokenUI(currentSessionToken, sessionTokenExpiry, false);
                 logStatus('Session token restored from previous session', 'success');
+                
+                // Auto-mount widget after session token restoration
+                setTimeout(async () => {
+                    logStatus('Auto-mounting widget with restored session token...', 'info');
+                    await autoMountWidget();
+                }, 100);
             }
         }
         
@@ -502,8 +506,6 @@ function updateTokenUI(token, expiry = null, isManual = false) {
         tokenInfo.classList.remove('hidden');
         sessionTokenExpiry = null;
     }
-    
-    enableMountButton();
 }
 
 // API Functions
@@ -625,7 +627,7 @@ async function initializeWidget(config) {
         
         // Add fresh script tag with cache-busting
         const script = document.createElement('script');
-        script.src = `https://spa-payment-widget-tgg.s3.eu-west-1.amazonaws.com/spa-payment/widget.js?t=${Date.now()}`;
+        script.src = `https://widget.dev.payment.sportalliance.com/spa-payment/widget.js?t=${Date.now()}`;
         script.onload = () => {
             logStatus('Widget script reloaded successfully', 'success');
             // Proceed with initialization after script loads
@@ -712,6 +714,87 @@ async function initializeWidgetAfterReload(config) {
     }
 }
 
+// Auto-mount widget function (used after session creation)
+async function autoMountWidget() {
+    if (!currentSessionToken) {
+        logStatus('No session token available for auto-mount.', 'error');
+        return;
+    }
+    
+    // Check if token is expired
+    if (sessionTokenExpiry && new Date() > sessionTokenExpiry) {
+        logStatus('Session token has expired. Cannot auto-mount widget.', 'error');
+        return;
+    }
+    
+    try {
+        // Collect widget configuration (same as manual mount)
+        const config = {
+            userSessionToken: currentSessionToken,
+            environment: document.getElementById('environment').value,
+            container: 'payment-widget-container',
+            countryCode: document.getElementById('countryCode').value,
+            locale: document.getElementById('locale').value,
+            onSuccess: (paymentToken) => {
+                const successMsg = `Payment authorized successfully! Token: ${paymentToken}`;
+                logStatus(successMsg, 'success');
+                console.log('Payment successful:', paymentToken);
+            },
+            onError: (error) => {
+                const errorMsg = `Payment error: ${error.message || 'Unknown error'}`;
+                logStatus(errorMsg, 'error');
+                console.error('Payment widget error:', error);
+            }
+        };
+        
+        // Add styling configuration if any values are provided
+        const styling = {};
+        const textColorMain = document.getElementById('textColorMain').value.trim();
+        const textColorSecondary = document.getElementById('textColorSecondary').value.trim();
+        const primaryColor = document.getElementById('primaryColor').value.trim();
+        const secondaryColor = document.getElementById('secondaryColor').value.trim();
+        const borderColor = document.getElementById('borderColor').value.trim();
+        const borderRadius = document.getElementById('borderRadius').value.trim();
+        const boxShadow = document.getElementById('boxShadow').value.trim();
+        
+        if (textColorMain) styling.textColorMain = textColorMain;
+        if (textColorSecondary) styling.textColorSecondary = textColorSecondary;
+        if (primaryColor) styling.primaryColor = primaryColor;
+        if (secondaryColor) styling.secondaryColor = secondaryColor;
+        if (borderColor) styling.borderColor = borderColor;
+        if (borderRadius) styling.borderRadius = borderRadius;
+        if (boxShadow) styling.boxShadow = boxShadow;
+        
+        if (Object.keys(styling).length > 0) {
+            config.styling = styling;
+        }
+        
+        // Add i18n configuration if translations are provided
+        const translations = getTranslationsAsObject();
+        if (Object.keys(translations).length > 0) {
+            config.i18n = translations;
+            logStatus(`Custom translations loaded (${Object.keys(translations).length} keys)`, 'info');
+        }
+        
+        // Add devMode if enabled
+        const devModeEnabled = document.getElementById('devMode').checked;
+        if (devModeEnabled) {
+            config.devMode = true;
+            logStatus('Development mode enabled - translation keys will be visible', 'info');
+        }
+        
+        logStatus(`Auto-mounting payment widget...`);
+        logStatus(`Environment: ${config.environment}, Country: ${config.countryCode}`);
+        
+        await initializeWidget(config);
+        logStatus('Widget auto-mounted successfully!', 'success');
+        
+    } catch (error) {
+        logStatus(`Auto-mount failed: ${error.message}`, 'error');
+        console.error('Failed to auto-mount widget:', error);
+    }
+}
+
 // Event Listeners
 createSessionBtn.addEventListener('click', async () => {
     logStatus('Starting payment session creation...');
@@ -752,10 +835,13 @@ createSessionBtn.addEventListener('click', async () => {
             logStatus(`Finion Pay Customer ID: ${response.finionPayCustomerId}`);
         }
         
+        // Auto-mount the widget after session creation
+        logStatus('Auto-mounting widget...', 'info');
+        await autoMountWidget();
+        
     } catch (error) {
         logStatus(`Session creation failed: ${error.message}`, 'error');
         console.error('Failed to create payment session:', error);
-        disableMountButton();
     } finally {
         setButtonLoading(createSessionBtn, false);
         createSessionBtn.innerHTML = `
@@ -767,95 +853,6 @@ createSessionBtn.addEventListener('click', async () => {
     }
 });
 
-mountWidgetBtn.addEventListener('click', async () => {
-    if (!currentSessionToken) {
-        logStatus('No session token available. Create a payment session first.', 'error');
-        return;
-    }
-    
-    // Check if token is expired
-    if (sessionTokenExpiry && new Date() > sessionTokenExpiry) {
-        logStatus('Session token has expired. Please create a new payment session.', 'error');
-        return;
-    }
-    
-    
-    setButtonLoading(mountWidgetBtn, true, 'Mounting Widget...');
-    
-    try {
-        // Collect widget configuration
-        const config = {
-            userSessionToken: currentSessionToken,
-            environment: document.getElementById('environment').value,
-            container: 'payment-widget-container',
-            countryCode: document.getElementById('countryCode').value,
-            locale: document.getElementById('locale').value,
-            onSuccess: (paymentToken) => {
-                const successMsg = `Payment authorized successfully! Token: ${paymentToken}`;
-                logStatus(successMsg, 'success');
-                console.log('Payment successful:', paymentToken);
-            },
-            onError: (error) => {
-                const errorMsg = `Payment error: ${error.message || 'Unknown error'}`;
-                logStatus(errorMsg, 'error');
-                console.error('Payment widget error:', error);
-            }
-        };
-        
-        // Add styling configuration if any values are provided
-        const styling = {};
-        const primaryColor = document.getElementById('primaryColor').value.trim();
-        const fontFamily = document.getElementById('fontFamily').value.trim();
-        const borderRadius = document.getElementById('borderRadius').value.trim();
-        const errorColor = document.getElementById('errorColor').value.trim();
-        const successColor = document.getElementById('successColor').value.trim();
-        const warningColor = document.getElementById('warningColor').value.trim();
-        
-        if (primaryColor) styling.primaryColor = primaryColor;
-        if (fontFamily) styling.fontFamily = fontFamily;
-        if (borderRadius) styling.borderRadius = borderRadius;
-        if (errorColor) styling.errorColor = errorColor;
-        if (successColor) styling.successColor = successColor;
-        if (warningColor) styling.warningColor = warningColor;
-        
-        if (Object.keys(styling).length > 0) {
-            config.styling = styling;
-        }
-        
-        // Add i18n configuration if translations are provided
-        const translations = getTranslationsAsObject();
-        if (Object.keys(translations).length > 0) {
-            config.i18n = translations;
-            logStatus(`Custom translations loaded (${Object.keys(translations).length} keys)`, 'info');
-        }
-        
-        // Add devMode if enabled
-        const devModeEnabled = document.getElementById('devMode').checked;
-        if (devModeEnabled) {
-            config.devMode = true;
-            logStatus('Development mode enabled - translation keys will be visible', 'info');
-        }
-        
-        const isRemount = widgetInstance !== null;
-        logStatus(`${isRemount ? 'Remounting' : 'Mounting'} payment widget with configuration...`);
-        logStatus(`Environment: ${config.environment}, Country: ${config.countryCode}`);
-        
-        await initializeWidget(config);
-        
-    } catch (error) {
-        logStatus(`Widget mounting failed: ${error.message}`, 'error');
-        console.error('Failed to mount widget:', error);
-    } finally {
-        setButtonLoading(mountWidgetBtn, false);
-        const buttonText = widgetInstance ? 'Remount Payment Widget' : 'Mount Payment Widget';
-        mountWidgetBtn.innerHTML = `
-            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
-            </svg>
-            ${buttonText}
-        `;
-    }
-});
 
 clearLogsBtn.addEventListener('click', clearLogs);
 
@@ -874,7 +871,7 @@ clearStorageBtn.addEventListener('click', () => {
 function setupAutoSave() {
     const formElements = [
         'apiKey', 'apiBaseUrl', 'sessionAmount', 'scope', 'referenceText', 'customerId', 'finionPayCustomerId',
-        'countryCode', 'environment', 'locale', 'primaryColor', 'fontFamily', 'borderRadius', 'errorColor', 'successColor', 'warningColor'
+        'countryCode', 'environment', 'locale', 'textColorMain', 'textColorSecondary', 'primaryColor', 'secondaryColor', 'borderColor', 'borderRadius', 'boxShadow'
     ];
     
     // Debounce function to limit save frequency
@@ -925,7 +922,7 @@ debugModeCheckbox.addEventListener('change', () => {
 });
 
 // Manual token mode toggle
-manualTokenModeCheckbox.addEventListener('change', () => {
+manualTokenModeCheckbox.addEventListener('change', async () => {
     const isManual = manualTokenModeCheckbox.checked;
     
     if (isManual) {
@@ -934,24 +931,42 @@ manualTokenModeCheckbox.addEventListener('change', () => {
         userSessionTokenField.classList.add('bg-white');
         userSessionTokenField.placeholder = 'Enter your session token manually';
         logStatus('Manual token entry enabled', 'info');
+        
+        // Check if there's already a token value and auto-mount if valid
+        const token = userSessionTokenField.value.trim();
+        if (token.length > 10) {
+            updateTokenUI(token, null, true);
+            logStatus('Existing token validated in manual mode', 'success');
+            logStatus('Auto-mounting widget with existing token...', 'info');
+            await autoMountWidget();
+        }
     } else {
         userSessionTokenField.readOnly = true;
         userSessionTokenField.classList.add('bg-gray-50');
         userSessionTokenField.classList.remove('bg-white');
         userSessionTokenField.placeholder = 'Token will appear here after creating session';
         logStatus('Automatic token mode enabled', 'info');
+        
+        // Check if there's a current session token and auto-mount if valid
+        if (currentSessionToken) {
+            logStatus('Auto-mounting widget with current session token...', 'info');
+            await autoMountWidget();
+        }
     }
 });
 
 // Manual token input validation
-userSessionTokenField.addEventListener('input', () => {
+userSessionTokenField.addEventListener('input', async () => {
     if (manualTokenModeCheckbox.checked) {
         const token = userSessionTokenField.value.trim();
         if (token.length > 10) { // Basic validation
             updateTokenUI(token, null, true);
             logStatus('Manual token entered and validated', 'success');
+            
+            // Auto-mount widget after manual token entry
+            logStatus('Auto-mounting widget with manual token...', 'info');
+            await autoMountWidget();
         } else {
-            disableMountButton();
             const tokenInfo = document.getElementById('tokenInfo');
             tokenInfo.classList.add('hidden');
         }
@@ -1008,19 +1023,21 @@ async function handleRedirectReturn() {
         
         // Add styling configuration if any values are provided (same as manual mount)
         const styling = {};
+        const textColorMain = document.getElementById('textColorMain').value.trim();
+        const textColorSecondary = document.getElementById('textColorSecondary').value.trim();
         const primaryColor = document.getElementById('primaryColor').value.trim();
-        const fontFamily = document.getElementById('fontFamily').value.trim();
+        const secondaryColor = document.getElementById('secondaryColor').value.trim();
+        const borderColor = document.getElementById('borderColor').value.trim();
         const borderRadius = document.getElementById('borderRadius').value.trim();
-        const errorColor = document.getElementById('errorColor').value.trim();
-        const successColor = document.getElementById('successColor').value.trim();
-        const warningColor = document.getElementById('warningColor').value.trim();
+        const boxShadow = document.getElementById('boxShadow').value.trim();
         
+        if (textColorMain) styling.textColorMain = textColorMain;
+        if (textColorSecondary) styling.textColorSecondary = textColorSecondary;
         if (primaryColor) styling.primaryColor = primaryColor;
-        if (fontFamily) styling.fontFamily = fontFamily;
+        if (secondaryColor) styling.secondaryColor = secondaryColor;
+        if (borderColor) styling.borderColor = borderColor;
         if (borderRadius) styling.borderRadius = borderRadius;
-        if (errorColor) styling.errorColor = errorColor;
-        if (successColor) styling.successColor = successColor;
-        if (warningColor) styling.warningColor = warningColor;
+        if (boxShadow) styling.boxShadow = boxShadow;
         
         if (Object.keys(styling).length > 0) {
             config.styling = styling;
