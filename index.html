@@ -125,6 +125,20 @@
                         <!-- Styling Configuration -->
                         <div class="border-t border-gray-100 pt-6">
                             <h3 class="text-sm font-medium text-gray-900 mb-4">Custom Styling</h3>
+                            
+                            <!-- Styling Presets -->
+                            <div class="mb-6">
+                                <label for="stylingPreset" class="block text-sm font-medium text-gray-700 mb-2">Styling Presets</label>
+                                <select 
+                                    id="stylingPreset" 
+                                    class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
+                                >
+                                    <option value="">Custom (Manual Configuration)</option>
+                                    <option value="magicline">Magicline</option>
+                                    <option value="mysports">MySports</option>
+                                </select>
+                                <p class="mt-1 text-xs text-gray-500">Select a preset to automatically configure styling, or choose "Custom" for manual configuration</p>
+                            </div>
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label for="textColorMain" class="block text-sm font-medium text-gray-700 mb-2">Main Text Color</label>

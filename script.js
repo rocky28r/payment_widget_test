@@ -19,6 +19,30 @@ let isReturningFromRedirect = false;
 // Translation management
 let translationPairs = [];
 
+// Styling Presets
+const STYLING_PRESETS = {
+    magicline: {
+        name: "Magicline",
+        textColorMain: "#58666E",
+        textColorSecondary: "#94999D",
+        primaryColor: "#00ADE2",
+        secondaryColor: "#F1FCFF",
+        borderColor: "#DEE5E7",
+        borderRadius: "0",
+        boxShadow: "none"
+    },
+    mysports: {
+        name: "MySports", 
+        textColorMain: "#131313",
+        textColorSecondary: "#5F5E5E",
+        primaryColor: "#1A3294",
+        secondaryColor: "#E8EAF4",
+        borderColor: "#DFDFDF",
+        borderRadius: "8px",
+        boxShadow: "0 8px 16px 0 rgba(0, 0, 0, 0.08)"
+    }
+};
+
 // Local Storage Keys
 const STORAGE_KEY = 'paymentWidgetTestSuite';
 const STORAGE_VERSION = '1.1';
@@ -213,6 +237,7 @@ function saveToLocalStorage() {
             manualTokenMode: document.getElementById('manualTokenMode').checked,
             
             // Styling Configuration
+            stylingPreset: document.getElementById('stylingPreset').value,
             textColorMain: document.getElementById('textColorMain').value,
             textColorSecondary: document.getElementById('textColorSecondary').value,
             primaryColor: document.getElementById('primaryColor').value,
@@ -284,6 +309,7 @@ function loadFromLocalStorage() {
         if (formData.locale) document.getElementById('locale').value = formData.locale;
         
         // Restore Styling Configuration
+        if (formData.stylingPreset !== undefined) document.getElementById('stylingPreset').value = formData.stylingPreset;
         if (formData.textColorMain) document.getElementById('textColorMain').value = formData.textColorMain;
         if (formData.textColorSecondary) document.getElementById('textColorSecondary').value = formData.textColorSecondary;
         if (formData.primaryColor) document.getElementById('primaryColor').value = formData.primaryColor;
@@ -488,6 +514,61 @@ function getTranslationsAsObject() {
         }
     });
     return translations;
+}
+
+// Styling Preset Functions
+function applyStylePreset(presetKey) {
+    if (!presetKey || !STYLING_PRESETS[presetKey]) {
+        logStatus('Invalid or empty preset selected', 'warn');
+        return;
+    }
+    
+    const preset = STYLING_PRESETS[presetKey];
+    logStatus(`Applying ${preset.name} styling preset...`, 'info');
+    
+    // Apply preset values to form fields
+    document.getElementById('textColorMain').value = preset.textColorMain;
+    document.getElementById('textColorSecondary').value = preset.textColorSecondary;
+    document.getElementById('primaryColor').value = preset.primaryColor;
+    document.getElementById('secondaryColor').value = preset.secondaryColor;
+    document.getElementById('borderColor').value = preset.borderColor;
+    document.getElementById('borderRadius').value = preset.borderRadius;
+    document.getElementById('boxShadow').value = preset.boxShadow;
+    
+    logStatus(`${preset.name} preset applied successfully`, 'success');
+    
+    // Save the configuration
+    saveToLocalStorage();
+    
+    // If widget is already mounted, remount it with new styling
+    if (currentSessionToken && widgetInstance) {
+        logStatus('Remounting widget with new preset styling...', 'info');
+        setTimeout(autoMountWidget, 100);
+    }
+}
+
+function clearStylePreset() {
+    logStatus('Clearing custom styling to vanilla defaults...', 'info');
+    
+    // Clear all styling fields
+    document.getElementById('textColorMain').value = '';
+    document.getElementById('textColorSecondary').value = '';
+    document.getElementById('primaryColor').value = '';
+    document.getElementById('secondaryColor').value = '';
+    document.getElementById('borderColor').value = '';
+    document.getElementById('borderRadius').value = '';
+    document.getElementById('boxShadow').value = '';
+    
+    logStatus('Styling cleared - using vanilla widget appearance', 'success');
+    
+    // Save the configuration
+    saveToLocalStorage();
+    
+    // If widget is already mounted, remount it without styling
+    if (currentSessionToken && widgetInstance) {
+        logStatus('Remounting widget with vanilla styling...', 'info');
+        setTimeout(autoMountWidget, 100);
+    }
 }
 
 function updateTokenUI(token, expiry = null, isManual = false) {
@@ -871,7 +952,7 @@ clearStorageBtn.addEventListener('click', () => {
 function setupAutoSave() {
     const formElements = [
         'apiKey', 'apiBaseUrl', 'sessionAmount', 'scope', 'referenceText', 'customerId', 'finionPayCustomerId',
-        'countryCode', 'environment', 'locale', 'textColorMain', 'textColorSecondary', 'primaryColor', 'secondaryColor', 'borderColor', 'borderRadius', 'boxShadow'
+        'countryCode', 'environment', 'locale', 'stylingPreset', 'textColorMain', 'textColorSecondary', 'primaryColor', 'secondaryColor', 'borderColor', 'borderRadius', 'boxShadow'
     ];
     
     // Debounce function to limit save frequency
@@ -1089,6 +1170,19 @@ document.addEventListener('DOMContentLoaded', () => {
     if (addTranslationBtn) {
         addTranslationBtn.addEventListener('click', () => {
             addTranslationPair();
+        });
+    }
+    
+    // Setup styling preset selector
+    const stylingPresetSelect = document.getElementById('stylingPreset');
+    if (stylingPresetSelect) {
+        stylingPresetSelect.addEventListener('change', () => {
+            const selectedPreset = stylingPresetSelect.value;
+            if (selectedPreset) {
+                applyStylePreset(selectedPreset);
+            } else {
+                clearStylePreset();
+            }
         });
     }
     
