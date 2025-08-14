@@ -34,7 +34,213 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
                 
-                <!-- Section 1: User Payment Session Generation -->
+                <!-- Section 1: Widget Configuration -->
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h2 class="text-lg font-medium text-gray-900 flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            </svg>
+                            Widget Configuration
+                        </h2>
+                        <p class="mt-1 text-sm text-gray-500">Configure widget display options - auto-mounts when valid session token is available</p>
+                    </div>
+                    <div class="p-6 space-y-6">
+                        <div>
+                            <div class="flex items-center justify-between mb-2">
+                                <label for="userSessionToken" class="block text-sm font-medium text-gray-700">
+                                    User Session Token <span class="text-red-500">*</span>
+                                </label>
+                                <div class="flex items-center space-x-2">
+                                    <label class="flex items-center text-sm">
+                                        <input type="checkbox" id="manualTokenMode" class="rounded border-gray-300 text-green-600 focus:ring-green-500">
+                                        <span class="ml-2 text-gray-600">Manual Entry</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <textarea 
+                                id="userSessionToken" 
+                                rows="3"
+                                placeholder="Token will appear here after creating session, or enable manual entry"
+                                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm bg-gray-50"
+                                readonly
+                            ></textarea>
+                            <div id="tokenInfo" class="mt-1 text-xs text-gray-500 hidden">
+                                <span id="tokenExpiry"></span>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label for="countryCode" class="block text-sm font-medium text-gray-700 mb-2">
+                                    Country Code <span class="text-red-500">*</span>
+                                </label>
+                                <select 
+                                    id="countryCode" 
+                                    class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
+                                    required
+                                >
+                                    <option value="DE" selected>DE - Germany</option>
+                                    <option value="US">US - United States</option>
+                                    <option value="GB">GB - United Kingdom</option>
+                                    <option value="CH">CH - Switzerland</option>
+                                    <option value="FR">FR - France</option>
+                                    <option value="IT">IT - Italy</option>
+                                    <option value="ES">ES - Spain</option>
+                                    <option value="NL">NL - Netherlands</option>
+                                    <option value="BE">BE - Belgium</option>
+                                    <option value="AT">AT - Austria</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="environment" class="block text-sm font-medium text-gray-700 mb-2">Environment</label>
+                                <select 
+                                    id="environment" 
+                                    class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
+                                >
+                                    <option value="test">Test</option>
+                                    <option value="sandbox" selected>Sandbox</option>
+                                    <option value="live">Live</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label for="locale" class="block text-sm font-medium text-gray-700 mb-2">Locale</label>
+                            <select 
+                                id="locale" 
+                                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
+                            >
+                                <option value="en-US" selected>en-US - English (US)</option>
+                                <option value="en-GB">en-GB - English (UK)</option>
+                                <option value="de-DE">de-DE - German</option>
+                                <option value="fr-FR">fr-FR - French</option>
+                                <option value="it-IT">it-IT - Italian</option>
+                                <option value="es-ES">es-ES - Spanish</option>
+                                <option value="nl-NL">nl-NL - Dutch</option>
+                            </select>
+                        </div>
+
+                        <!-- Styling Configuration -->
+                        <div class="border-t border-gray-100 pt-6">
+                            <h3 class="text-sm font-medium text-gray-900 mb-4">Custom Styling</h3>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="textColorMain" class="block text-sm font-medium text-gray-700 mb-2">Main Text Color</label>
+                                    <input 
+                                        type="text" 
+                                        id="textColorMain" 
+                                        placeholder="#000000"
+                                        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
+                                    >
+                                    <p class="mt-1 text-xs text-gray-500">Hex color code</p>
+                                </div>
+                                <div>
+                                    <label for="textColorSecondary" class="block text-sm font-medium text-gray-700 mb-2">Secondary Text Color</label>
+                                    <input 
+                                        type="text" 
+                                        id="textColorSecondary" 
+                                        placeholder="#666666"
+                                        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
+                                    >
+                                    <p class="mt-1 text-xs text-gray-500">Hex color code</p>
+                                </div>
+                                <div>
+                                    <label for="primaryColor" class="block text-sm font-medium text-gray-700 mb-2">Primary Brand Color</label>
+                                    <input 
+                                        type="text" 
+                                        id="primaryColor" 
+                                        placeholder="#1a73e8"
+                                        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
+                                    >
+                                    <p class="mt-1 text-xs text-gray-500">Hex color code</p>
+                                </div>
+                                <div>
+                                    <label for="secondaryColor" class="block text-sm font-medium text-gray-700 mb-2">Secondary Brand Color</label>
+                                    <input 
+                                        type="text" 
+                                        id="secondaryColor" 
+                                        placeholder="#f8f9fa"
+                                        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
+                                    >
+                                    <p class="mt-1 text-xs text-gray-500">Hex color code</p>
+                                </div>
+                                <div>
+                                    <label for="borderColor" class="block text-sm font-medium text-gray-700 mb-2">Border Color</label>
+                                    <input 
+                                        type="text" 
+                                        id="borderColor" 
+                                        placeholder="#e5e5e5"
+                                        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
+                                    >
+                                    <p class="mt-1 text-xs text-gray-500">Hex color code</p>
+                                </div>
+                                <div>
+                                    <label for="borderRadius" class="block text-sm font-medium text-gray-700 mb-2">Border Radius</label>
+                                    <input 
+                                        type="text" 
+                                        id="borderRadius" 
+                                        placeholder="8px"
+                                        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
+                                    >
+                                    <p class="mt-1 text-xs text-gray-500">px or rem units</p>
+                                </div>
+                                <div class="sm:col-span-2">
+                                    <label for="boxShadow" class="block text-sm font-medium text-gray-700 mb-2">Box Shadow</label>
+                                    <input 
+                                        type="text" 
+                                        id="boxShadow" 
+                                        placeholder="0 1px 3px rgba(0, 0, 0, 0.1)"
+                                        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
+                                    >
+                                    <p class="mt-1 text-xs text-gray-500">CSS box-shadow styling</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- i18n Configuration -->
+                        <div class="border-t border-gray-100 pt-6">
+                            <h3 class="text-sm font-medium text-gray-900 mb-4">Custom Translations</h3>
+                            
+                            <!-- Translation Key-Value Pairs -->
+                            <div id="translationPairs" class="space-y-3 mb-4">
+                                <!-- Translation pairs will be added here dynamically -->
+                            </div>
+                            
+                            <!-- Add New Translation Button -->
+                            <button 
+                                type="button" 
+                                id="addTranslationBtn"
+                                class="flex items-center px-3 py-2 text-sm text-green-600 hover:text-green-700 border border-green-300 hover:border-green-400 rounded-md transition-colors"
+                            >
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                </svg>
+                                Add Translation
+                            </button>
+                            <p class="mt-2 text-xs text-gray-500">Add custom translations to override default widget text</p>
+                            
+                            <div class="mt-4">
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="devMode" class="rounded border-gray-300 text-green-600 focus:ring-green-500">
+                                    <span class="ml-2 text-sm font-medium text-gray-900">Development Mode</span>
+                                </label>
+                                <p class="mt-1 text-xs text-gray-500">Show translation keys in the widget for debugging</p>
+                            </div>
+                        </div>
+
+                        <!-- Auto-mount indicator -->
+                        <div class="w-full flex justify-center items-center py-3 px-4 border border-green-200 bg-green-50 rounded-md text-sm font-medium text-green-800">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                            </svg>
+                            Widget auto-mounts when valid session token is available
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 2: Payment Session Generation -->
                 <div class="bg-white rounded-lg shadow-sm border border-gray-200">
                     <div class="px-6 py-4 border-b border-gray-200">
                         <h2 class="text-lg font-medium text-gray-900 flex items-center">
@@ -212,201 +418,6 @@
                     </div>
                 </div>
 
-                <!-- Section 2: Component Mounting Parameters -->
-                <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-                    <div class="px-6 py-4 border-b border-gray-200">
-                        <h2 class="text-lg font-medium text-gray-900 flex items-center">
-                            <svg class="w-5 h-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                            </svg>
-                            Widget Configuration
-                        </h2>
-                        <p class="mt-1 text-sm text-gray-500">Configure widget mounting and display options</p>
-                    </div>
-                    <div class="p-6 space-y-6">
-                        <div>
-                            <div class="flex items-center justify-between mb-2">
-                                <label for="userSessionToken" class="block text-sm font-medium text-gray-700">
-                                    User Session Token <span class="text-red-500">*</span>
-                                </label>
-                                <div class="flex items-center space-x-2">
-                                    <label class="flex items-center text-sm">
-                                        <input type="checkbox" id="manualTokenMode" class="rounded border-gray-300 text-green-600 focus:ring-green-500">
-                                        <span class="ml-2 text-gray-600">Manual Entry</span>
-                                    </label>
-                                </div>
-                            </div>
-                            <textarea 
-                                id="userSessionToken" 
-                                rows="3"
-                                placeholder="Token will appear here after creating session, or enable manual entry"
-                                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm bg-gray-50"
-                                readonly
-                            ></textarea>
-                            <div id="tokenInfo" class="mt-1 text-xs text-gray-500 hidden">
-                                <span id="tokenExpiry"></span>
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <label for="countryCode" class="block text-sm font-medium text-gray-700 mb-2">
-                                    Country Code <span class="text-red-500">*</span>
-                                </label>
-                                <select 
-                                    id="countryCode" 
-                                    class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
-                                    required
-                                >
-                                    <option value="DE" selected>DE - Germany</option>
-                                    <option value="US">US - United States</option>
-                                    <option value="GB">GB - United Kingdom</option>
-                                    <option value="CH">CH - Switzerland</option>
-                                    <option value="FR">FR - France</option>
-                                    <option value="IT">IT - Italy</option>
-                                    <option value="ES">ES - Spain</option>
-                                    <option value="NL">NL - Netherlands</option>
-                                    <option value="BE">BE - Belgium</option>
-                                    <option value="AT">AT - Austria</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label for="environment" class="block text-sm font-medium text-gray-700 mb-2">Environment</label>
-                                <select 
-                                    id="environment" 
-                                    class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
-                                >
-                                    <option value="test">Test</option>
-                                    <option value="sandbox" selected>Sandbox</option>
-                                    <option value="live">Live</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div>
-                            <label for="locale" class="block text-sm font-medium text-gray-700 mb-2">Locale</label>
-                            <select 
-                                id="locale" 
-                                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
-                            >
-                                <option value="en-US" selected>en-US - English (US)</option>
-                                <option value="en-GB">en-GB - English (UK)</option>
-                                <option value="de-DE">de-DE - German</option>
-                                <option value="fr-FR">fr-FR - French</option>
-                                <option value="it-IT">it-IT - Italian</option>
-                                <option value="es-ES">es-ES - Spanish</option>
-                                <option value="nl-NL">nl-NL - Dutch</option>
-                            </select>
-                        </div>
-
-                        <!-- Styling Configuration -->
-                        <div class="border-t border-gray-100 pt-6">
-                            <h3 class="text-sm font-medium text-gray-900 mb-4">Custom Styling</h3>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div>
-                                    <label for="primaryColor" class="block text-sm font-medium text-gray-700 mb-2">Primary Color</label>
-                                    <input 
-                                        type="text" 
-                                        id="primaryColor" 
-                                        placeholder="#1a73e8"
-                                        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
-                                    >
-                                    <p class="mt-1 text-xs text-gray-500">Hex color code</p>
-                                </div>
-                                <div>
-                                    <label for="fontFamily" class="block text-sm font-medium text-gray-700 mb-2">Font Family</label>
-                                    <input 
-                                        type="text" 
-                                        id="fontFamily" 
-                                        placeholder="Inter, sans-serif"
-                                        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
-                                    >
-                                </div>
-                                <div>
-                                    <label for="borderRadius" class="block text-sm font-medium text-gray-700 mb-2">Border Radius</label>
-                                    <input 
-                                        type="text" 
-                                        id="borderRadius" 
-                                        placeholder="8px"
-                                        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
-                                    >
-                                </div>
-                                <div>
-                                    <label for="errorColor" class="block text-sm font-medium text-gray-700 mb-2">Error Color</label>
-                                    <input 
-                                        type="text" 
-                                        id="errorColor" 
-                                        placeholder="#dc2626"
-                                        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
-                                    >
-                                </div>
-                                <div>
-                                    <label for="successColor" class="block text-sm font-medium text-gray-700 mb-2">Success Color</label>
-                                    <input 
-                                        type="text" 
-                                        id="successColor" 
-                                        placeholder="#16a34a"
-                                        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
-                                    >
-                                </div>
-                                <div>
-                                    <label for="warningColor" class="block text-sm font-medium text-gray-700 mb-2">Warning Color</label>
-                                    <input 
-                                        type="text" 
-                                        id="warningColor" 
-                                        placeholder="#ea580c"
-                                        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
-                                    >
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- i18n Configuration -->
-                        <div class="border-t border-gray-100 pt-6">
-                            <h3 class="text-sm font-medium text-gray-900 mb-4">Custom Translations</h3>
-                            
-                            <!-- Translation Key-Value Pairs -->
-                            <div id="translationPairs" class="space-y-3 mb-4">
-                                <!-- Translation pairs will be added here dynamically -->
-                            </div>
-                            
-                            <!-- Add New Translation Button -->
-                            <button 
-                                type="button" 
-                                id="addTranslationBtn"
-                                class="flex items-center px-3 py-2 text-sm text-green-600 hover:text-green-700 border border-green-300 hover:border-green-400 rounded-md transition-colors"
-                            >
-                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                                </svg>
-                                Add Translation
-                            </button>
-                            <p class="mt-2 text-xs text-gray-500">Add custom translations to override default widget text</p>
-                            
-                            <div class="mt-4">
-                                <label class="flex items-center">
-                                    <input type="checkbox" id="devMode" class="rounded border-gray-300 text-green-600 focus:ring-green-500">
-                                    <span class="ml-2 text-sm font-medium text-gray-900">Development Mode</span>
-                                </label>
-                                <p class="mt-1 text-xs text-gray-500">Show translation keys in the widget for debugging</p>
-                            </div>
-                        </div>
-
-                        <button 
-                            id="mountWidgetBtn" 
-                            type="button"
-                            disabled
-                            class="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-400 cursor-not-allowed transition-colors duration-200"
-                        >
-                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
-                            </svg>
-                            Mount Payment Widget
-                        </button>
-                    </div>
-                </div>
-
             </div>
 
             <!-- Activity Logs Section -->
@@ -478,7 +489,7 @@
     </div>
 
     <!-- The JavaScript component to be loaded -->
-    <script src="https://spa-payment-widget-tgg.s3.eu-west-1.amazonaws.com/spa-payment/widget.js"></script>
+    <script src="https://widget.dev.payment.sportalliance.com/spa-payment/widget.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
