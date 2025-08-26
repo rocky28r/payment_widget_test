@@ -188,8 +188,8 @@ function validateForm(formData) {
         errors.push('Scope is required');
     }
     
-    if (formData.customerId && formData.finionPayCustomerId) {
-        errors.push('Cannot specify both Customer ID and Finion Pay Customer ID');
+    if (formData.referenceText !== undefined && !formData.referenceText?.trim()) {
+        errors.push('Reference text cannot be empty when provided');
     }
     
     return errors;
@@ -372,17 +372,13 @@ function loadFromLocalStorage() {
             }
         }
         
-        // Trigger mutual exclusivity for customer ID fields
+        // Ensure customer ID fields are both enabled (mutual exclusivity removed)
         const customerIdField = document.getElementById('customerId');
         const finionPayCustomerIdField = document.getElementById('finionPayCustomerId');
-        if (customerIdField.value.trim()) {
-            finionPayCustomerIdField.disabled = true;
-            finionPayCustomerIdField.classList.add('bg-gray-100');
-        }
-        if (finionPayCustomerIdField.value.trim()) {
-            customerIdField.disabled = true;
-            customerIdField.classList.add('bg-gray-100');
-        }
+        customerIdField.disabled = false;
+        customerIdField.classList.remove('bg-gray-100');
+        finionPayCustomerIdField.disabled = false;
+        finionPayCustomerIdField.classList.remove('bg-gray-100');
         
         const savedDate = new Date(formData.timestamp);
         logStatus(`Form data restored from ${savedDate.toLocaleString()}`, 'success');
@@ -1186,28 +1182,19 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // Add mutual exclusivity for customer ID fields
+    // Customer ID fields can now be used together (mutual exclusivity removed)
     const customerIdField = document.getElementById('customerId');
     const finionPayCustomerIdField = document.getElementById('finionPayCustomerId');
     
+    // Ensure both fields are always enabled
     customerIdField.addEventListener('input', () => {
-        if (customerIdField.value.trim()) {
-            finionPayCustomerIdField.disabled = true;
-            finionPayCustomerIdField.classList.add('bg-gray-100');
-        } else {
-            finionPayCustomerIdField.disabled = false;
-            finionPayCustomerIdField.classList.remove('bg-gray-100');
-        }
+        finionPayCustomerIdField.disabled = false;
+        finionPayCustomerIdField.classList.remove('bg-gray-100');
     });
     
     finionPayCustomerIdField.addEventListener('input', () => {
-        if (finionPayCustomerIdField.value.trim()) {
-            customerIdField.disabled = true;
-            customerIdField.classList.add('bg-gray-100');
-        } else {
-            customerIdField.disabled = false;
-            customerIdField.classList.remove('bg-gray-100');
-        }
+        customerIdField.disabled = false;
+        customerIdField.classList.remove('bg-gray-100');
     });
     
     // Handle redirect return if detected
