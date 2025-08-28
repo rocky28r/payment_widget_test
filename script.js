@@ -704,7 +704,7 @@ async function initializeWidget(config) {
         
         // Add fresh script tag with cache-busting
         const script = document.createElement('script');
-        script.src = `https://widget.dev.payment.sportalliance.com/spa-payment/widget.js?t=${Date.now()}`;
+        script.src = `https://widget.dev.payment.sportalliance.com/widget.js?t=${Date.now()}`;
         script.onload = () => {
             logStatus('Widget script reloaded successfully', 'success');
             // Proceed with initialization after script loads
