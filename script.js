@@ -651,27 +651,28 @@ async function unmountWidget() {
     if (widgetInstance) {
         try {
             logStatus('Unmounting existing widget...');
-            
-            // Try multiple unmount strategies
-            if (typeof widgetInstance.unmount === 'function') {
-                await widgetInstance.unmount();
-            } else if (typeof widgetInstance.destroy === 'function') {
+
+            // Use the destroy method as per new API
+            if (typeof widgetInstance.destroy === 'function') {
                 await widgetInstance.destroy();
-            } else if (typeof paymentWidget?.unmount === 'function') {
-                await paymentWidget.unmount();
-            } else if (typeof paymentWidget?.destroy === 'function') {
-                await paymentWidget.destroy();
+                logStatus('Widget destroyed using instance.destroy()', 'success');
+            } else if (typeof widgetInstance.unmount === 'function') {
+                // Fallback for older API versions
+                await widgetInstance.unmount();
+                logStatus('Widget unmounted using instance.unmount()', 'success');
+            } else {
+                logStatus('No destroy/unmount method found on widget instance', 'warn');
             }
-            
+
             widgetInstance = null;
-            logStatus('Widget unmounted successfully', 'success');
+            logStatus('Widget cleanup completed', 'success');
         } catch (error) {
-            logStatus(`Widget unmount error: ${error.message}`, 'warn');
-            console.error('Error during widget unmount:', error);
+            logStatus(`Widget cleanup error: ${error.message}`, 'warn');
+            console.error('Error during widget cleanup:', error);
             widgetInstance = null;
         }
     }
-    
+
     // Clear the container content to prepare for fresh mount
     widgetContainer.innerHTML = '';
 }
@@ -812,10 +813,31 @@ async function autoMountWidget() {
             container: 'payment-widget-container',
             countryCode: document.getElementById('countryCode').value,
             locale: document.getElementById('locale').value,
-            onSuccess: (paymentToken) => {
-                const successMsg = `Payment authorized successfully! Token: ${paymentToken}`;
+            onSuccess: (paymentRequestToken, paymentInstrumentDetails) => {
+                const successMsg = `Payment authorized successfully! Token: ${paymentRequestToken}`;
                 logStatus(successMsg, 'success');
-                console.log('Payment successful:', paymentToken);
+                console.log('Payment successful:', paymentRequestToken);
+
+                // Log payment instrument details
+                if (paymentInstrumentDetails) {
+                    logStatus('Payment Instrument Details:', 'info');
+                    logDebugInfo('Payment Instrument Details', paymentInstrumentDetails);
+
+                    // Log specific payment method details
+                    if (paymentInstrumentDetails.creditCard) {
+                        logStatus(`Credit Card: ${paymentInstrumentDetails.creditCard.brand} ending in ${paymentInstrumentDetails.creditCard.cardNumber}`, 'info');
+                    } else if (paymentInstrumentDetails.sepa) {
+                        logStatus(`SEPA: ${paymentInstrumentDetails.sepa.bankAccountDetails.iban}`, 'info');
+                    } else if (paymentInstrumentDetails.bacs) {
+                        logStatus(`BACS: ${paymentInstrumentDetails.bacs.accountHolder}`, 'info');
+                    } else if (paymentInstrumentDetails.paypal) {
+                        logStatus('PayPal payment method used', 'info');
+                    } else if (paymentInstrumentDetails.twint) {
+                        logStatus('Twint payment method used', 'info');
+                    } else if (paymentInstrumentDetails.ideal) {
+                        logStatus(`iDEAL: ${paymentInstrumentDetails.ideal.issuer}`, 'info');
+                    }
+                }
             },
             onError: (error) => {
                 const errorMsg = `Payment error: ${error.message || 'Unknown error'}`;
@@ -1074,12 +1096,33 @@ async function handleRedirectReturn() {
             container: 'payment-widget-container',
             countryCode: document.getElementById('countryCode').value,
             locale: document.getElementById('locale').value,
-            onSuccess: (paymentToken) => {
-                const successMsg = `Payment completed after redirect! Token: ${paymentToken}`;
+            onSuccess: (paymentRequestToken, paymentInstrumentDetails) => {
+                const successMsg = `Payment completed after redirect! Token: ${paymentRequestToken}`;
                 logStatus(successMsg, 'success');
-                console.log('Payment successful after redirect:', paymentToken);
+                console.log('Payment successful after redirect:', paymentRequestToken);
                 updateStatusIndicator('success', 'Payment Complete!');
-                
+
+                // Log payment instrument details
+                if (paymentInstrumentDetails) {
+                    logStatus('Payment Instrument Details:', 'info');
+                    logDebugInfo('Payment Instrument Details', paymentInstrumentDetails);
+
+                    // Log specific payment method details
+                    if (paymentInstrumentDetails.creditCard) {
+                        logStatus(`Credit Card: ${paymentInstrumentDetails.creditCard.brand} ending in ${paymentInstrumentDetails.creditCard.cardNumber}`, 'info');
+                    } else if (paymentInstrumentDetails.sepa) {
+                        logStatus(`SEPA: ${paymentInstrumentDetails.sepa.bankAccountDetails.iban}`, 'info');
+                    } else if (paymentInstrumentDetails.bacs) {
+                        logStatus(`BACS: ${paymentInstrumentDetails.bacs.accountHolder}`, 'info');
+                    } else if (paymentInstrumentDetails.paypal) {
+                        logStatus('PayPal payment method used', 'info');
+                    } else if (paymentInstrumentDetails.twint) {
+                        logStatus('Twint payment method used', 'info');
+                    } else if (paymentInstrumentDetails.ideal) {
+                        logStatus(`iDEAL: ${paymentInstrumentDetails.ideal.issuer}`, 'info');
+                    }
+                }
+
                 // Clean up URL parameters after successful payment
                 setTimeout(() => {
                     cleanupRedirectParams();
@@ -1090,7 +1133,7 @@ async function handleRedirectReturn() {
                 logStatus(errorMsg, 'error');
                 console.error('Payment widget error after redirect:', error);
                 updateStatusIndicator('error', 'Payment Error');
-                
+
                 // Clean up URL parameters even on error
                 setTimeout(() => {
                     cleanupRedirectParams();
