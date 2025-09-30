@@ -21,7 +21,11 @@ This is a comprehensive Payment Widget Test Suite that integrates with the Finio
 **External Dependencies**:
 - TailwindCSS via CDN for styling and responsive design
 - Google Fonts (Inter) for typography
-- SPA Payment Widget library: `https://spa-payment-widget-tgg.s3.eu-west-1.amazonaws.com/spa-payment/widget.js`
+- SPA Payment Widget library: `https://widget.dev.payment.sportalliance.com/widget.js`
+
+**Widget API**:
+- Initialization: `window.paymentWidget.init(config)` returns `{ destroy(): void }`
+- Cleanup: Call `widgetInstance.destroy()` to unmount and cleanup resources
 
 ## API Integration
 
@@ -33,8 +37,8 @@ This is a comprehensive Payment Widget Test Suite that integrates with the Finio
 - `amount` (required): Payment amount (use 0 for recurring payments)
 - `scope` (required): "MEMBER_ACCOUNT" or "ECOM"
 - `referenceText` (optional): Bank statement reference
-- `customerId` (optional): ERP customer ID (mutually exclusive with finionPayCustomerId)
-- `finionPayCustomerId` (optional): Finion Pay customer UUID
+- `customerId` (optional): ERP customer ID (can be used with finionPayCustomerId)
+- `finionPayCustomerId` (optional): Finion Pay customer UUID (can be used with customerId)
 - `permittedPaymentChoices` (optional): Array of allowed payment methods
 
 **Response**: Returns session token and expiry timestamp
@@ -51,7 +55,7 @@ Since this is a static website with separate HTML, CSS, and JS files, no build p
 
 **Form Validation**: Comprehensive client-side validation with real-time error feedback.
 
-**Mutual Exclusivity**: Customer ID fields are mutually exclusive with automatic UI management.
+**Customer ID Fields**: Both customerId and finionPayCustomerId can be provided together in the same session request.
 
 **Progressive Enhancement**: Mount button is disabled until valid session token is created.
 
@@ -66,26 +70,48 @@ Since this is a static website with separate HTML, CSS, and JS files, no build p
 ## Widget Configuration
 
 **Required Parameters**:
-- `userSessionToken`: User authentication token from API
-- `container`: DOM element ID for widget mounting (set to 'spa-component-frame')
-- `amount`: Payment amount in cents
-- `currency`: ISO currency code (EUR, USD, GBP, CHF)
+- `userSessionToken`: User authentication token from API (contains payment amount and session details)
+- `container`: DOM element ID or HTMLElement for widget mounting (set to 'payment-widget-container')
 - `countryCode`: ISO country code (DE, US, GB, CH, FR, IT, ES, NL, BE, AT)
+- `locale`: Language locale (en, en-US, en-GB, de-DE, fr-FR, it-IT, es-ES, nl-NL)
 
 **Optional Parameters**:
 - `environment`: 'test', 'sandbox' (default), or 'live'
-- `locale`: Language locale (en-US, en-GB, de-DE, fr-FR, it-IT, es-ES, nl-NL)
-- `onSuccess`: Success callback function receiving payment token
+- `styling`: Custom theme colors and styling object
+- `i18n`: Translation overrides object
+- `onSuccess`: Success callback function receiving (paymentRequestToken, paymentInstrumentDetails)
 - `onError`: Error callback function receiving error object
+- `devMode`: Show i18n keys instead of translated text (development only)
+
+**Note**: `amount` and `currency` are no longer required in widget config as they are handled by the user session token.
 
 ## Widget Integration Flow
 
-1. Configure API credentials and session parameters
+1. Configure API credentials and session parameters (including amount)
 2. Create payment session via API call
-3. Receive and store session token
-4. Configure widget mounting parameters (amount, currency, country, environment, locale)
-5. Mount payment widget with complete configuration
-6. Handle payment success/error callbacks
+3. Receive and store session token (contains amount and payment details)
+4. Configure widget mounting parameters (country, environment, locale, styling, i18n)
+5. Initialize widget with `window.paymentWidget.init(config)`
+6. Handle payment success/error callbacks with payment instrument details
+
+## Payment Instrument Details
+
+The `onSuccess` callback receives two parameters:
+1. `paymentRequestToken` (string): The payment authorization token
+2. `paymentInstrumentDetails` (object, optional): Details about the payment method used
+
+**PaymentInstrumentDetails Interface**:
+- `creditCard`: Brand, card holder, masked card number, expiry, issuer country
+- `sepa`: Bank account details (account holder, bank name, BIC, IBAN, signature)
+- `bacs`: Account holder, bank account number, sort code, mandate ID, direct debit PDF URL
+- `chDD`: Swiss Direct Debit bank account details
+- `lsvDD`: LSV Direct Debit bank account details
+- `ideal`: iDEAL issuer information
+- `banContactCard`: Bancontact card details (holder, masked number, expiry)
+- `paypal`: PayPal payment confirmation
+- `twint`: Twint payment confirmation
+- `cash`: Cash payment confirmation
+- `bankTransfer`: Bank transfer payment confirmation
 
 ## UI/UX Features
 
