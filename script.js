@@ -679,49 +679,14 @@ async function unmountWidget() {
 async function initializeWidget(config) {
     // Unmount existing widget first
     await unmountWidget();
-    
+
     // Save current form data to preserve it during widget initialization
     try {
-        logStatus('Preserving form data during widget initialization...', 'info');
         saveToLocalStorage();
     } catch (error) {
         logStatus(`Form data preservation error: ${error.message}`, 'warn');
     }
-    
-    // Force reload the widget script to get a fresh instance
-    logStatus('Reloading widget script to ensure fresh client_key...', 'info');
-    
-    try {
-        // Remove existing script tag
-        const existingScript = document.querySelector('script[src*="spa-payment-widget"]');
-        if (existingScript) {
-            existingScript.remove();
-            // Clear the global paymentWidget object
-            if (typeof paymentWidget !== 'undefined') {
-                delete window.paymentWidget;
-            }
-        }
-        
-        // Add fresh script tag with cache-busting
-        const script = document.createElement('script');
-        script.src = `https://widget.dev.payment.sportalliance.com/spa-payment/widget.js?t=${Date.now()}`;
-        script.onload = () => {
-            logStatus('Widget script reloaded successfully', 'success');
-            // Proceed with initialization after script loads
-            setTimeout(() => initializeWidgetAfterReload(config), 100);
-        };
-        script.onerror = () => {
-            logStatus('Failed to reload widget script', 'error');
-        };
-        document.head.appendChild(script);
-        
-        return; // Exit here, initialization continues in initializeWidgetAfterReload
-        
-    } catch (error) {
-        logStatus(`Script reload error: ${error.message}`, 'warn');
-    }
-    
-    // Fallback: continue with existing script
+
     logStatus('Initializing payment widget...');
 
     // Check if the paymentWidget global object exists
@@ -734,59 +699,24 @@ async function initializeWidget(config) {
 
     try {
         logStatus('Calling paymentWidget.init()...');
-        
+
         // Debug log the config (excluding sensitive callbacks)
         logDebugInfo('Widget Configuration', {
             ...config,
             onSuccess: '[Function]',
             onError: '[Function]'
         });
-        
+
         widgetInstance = paymentWidget.init(config);
         logStatus('Payment widget initialized successfully!', 'success');
         console.log('Payment widget initialized successfully.');
     } catch (error) {
         const errorMsg = `Widget initialization failed: ${error.message || 'Unknown error'}`;
         logStatus(errorMsg, 'error');
-        
+
         // Reset widget instance on error
         widgetInstance = null;
-        
-        console.error('Failed to initialize payment widget:', error);
-    }
-}
 
-async function initializeWidgetAfterReload(config) {
-    logStatus('Initializing payment widget with fresh script...');
-
-    // Check if the paymentWidget global object exists
-    if (typeof paymentWidget === 'undefined') {
-        const errorMsg = 'Payment widget library not loaded after reload';
-        logStatus(errorMsg, 'error');
-        console.error("Payment widget library 'paymentWidget' is undefined after reload");
-        return;
-    }
-
-    try {
-        logStatus('Calling paymentWidget.init() with fresh instance...');
-        
-        // Debug log the config (excluding sensitive callbacks)
-        logDebugInfo('Widget Configuration', {
-            ...config,
-            onSuccess: '[Function]',
-            onError: '[Function]'
-        });
-        
-        widgetInstance = paymentWidget.init(config);
-        logStatus('Payment widget initialized successfully with fresh client_key!', 'success');
-        console.log('Payment widget initialized successfully.');
-    } catch (error) {
-        const errorMsg = `Widget initialization failed: ${error.message || 'Unknown error'}`;
-        logStatus(errorMsg, 'error');
-        
-        // Reset widget instance on error
-        widgetInstance = null;
-        
         console.error('Failed to initialize payment widget:', error);
     }
 }
