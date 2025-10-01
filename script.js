@@ -228,14 +228,18 @@ function saveToLocalStorage() {
             customerId: document.getElementById('customerId').value,
             finionPayCustomerId: document.getElementById('finionPayCustomerId').value,
             permittedPaymentChoices: Array.from(document.querySelectorAll('.payment-method-checkbox:checked')).map(cb => cb.value),
+            requireDirectDebitSignature: document.getElementById('requireDirectDebitSignature').checked,
             debugMode: document.getElementById('debugMode').checked,
-            
+
             // Widget Configuration
             countryCode: document.getElementById('countryCode').value,
             environment: document.getElementById('environment').value,
             locale: document.getElementById('locale').value,
             manualTokenMode: document.getElementById('manualTokenMode').checked,
-            
+
+            // Feature Flags
+            useRubiksUI: document.getElementById('useRubiksUI').checked,
+
             // Styling Configuration
             stylingPreset: document.getElementById('stylingPreset').value,
             textColorMain: document.getElementById('textColorMain').value,
@@ -296,7 +300,12 @@ function loadFromLocalStorage() {
                 cb.checked = formData.permittedPaymentChoices.includes(cb.value);
             });
         }
-        
+
+        // Restore requireDirectDebitSignature
+        if (formData.requireDirectDebitSignature !== undefined) {
+            document.getElementById('requireDirectDebitSignature').checked = formData.requireDirectDebitSignature;
+        }
+
         // Restore debug mode
         if (formData.debugMode !== undefined) {
             document.getElementById('debugMode').checked = formData.debugMode;
@@ -307,7 +316,12 @@ function loadFromLocalStorage() {
         if (formData.countryCode) document.getElementById('countryCode').value = formData.countryCode;
         if (formData.environment) document.getElementById('environment').value = formData.environment;
         if (formData.locale) document.getElementById('locale').value = formData.locale;
-        
+
+        // Restore Feature Flags
+        if (formData.useRubiksUI !== undefined) {
+            document.getElementById('useRubiksUI').checked = formData.useRubiksUI;
+        }
+
         // Restore Styling Configuration
         if (formData.stylingPreset !== undefined) document.getElementById('stylingPreset').value = formData.stylingPreset;
         if (formData.textColorMain) document.getElementById('textColorMain').value = formData.textColorMain;
@@ -611,7 +625,11 @@ async function createPaymentSession(sessionData) {
     if (sessionData.permittedPaymentChoices?.length > 0) {
         requestBody.permittedPaymentChoices = sessionData.permittedPaymentChoices;
     }
-    
+
+    if (sessionData.requireDirectDebitSignature !== undefined) {
+        requestBody.requireDirectDebitSignature = sessionData.requireDirectDebitSignature;
+    }
+
     // Debug logging for request
     logDebugInfo('API Request Headers', {
         'Content-Type': 'application/json',
@@ -789,7 +807,16 @@ async function autoMountWidget() {
             config.devMode = true;
             logStatus('Development mode enabled - translation keys will be visible', 'info');
         }
-        
+
+        // Add featureFlags if any are enabled
+        const useRubiksUI = document.getElementById('useRubiksUI').checked;
+        if (useRubiksUI) {
+            config.featureFlags = {
+                useRubiksUI: true
+            };
+            logStatus('Feature flag enabled: useRubiksUI', 'info');
+        }
+
         logStatus(`Auto-mounting payment widget...`);
         logStatus(`Environment: ${config.environment}, Country: ${config.countryCode}`);
         
@@ -815,7 +842,8 @@ createSessionBtn.addEventListener('click', async () => {
         referenceText: document.getElementById('referenceText').value,
         customerId: document.getElementById('customerId').value,
         finionPayCustomerId: document.getElementById('finionPayCustomerId').value,
-        permittedPaymentChoices: Array.from(document.querySelectorAll('.payment-method-checkbox:checked')).map(cb => cb.value)
+        permittedPaymentChoices: Array.from(document.querySelectorAll('.payment-method-checkbox:checked')).map(cb => cb.value),
+        requireDirectDebitSignature: document.getElementById('requireDirectDebitSignature').checked
     };
     
     // Validate form
@@ -910,7 +938,17 @@ function setupAutoSave() {
     if (devModeCheckbox) {
         devModeCheckbox.addEventListener('change', debouncedSave);
     }
-    
+
+    const useRubiksUICheckbox = document.getElementById('useRubiksUI');
+    if (useRubiksUICheckbox) {
+        useRubiksUICheckbox.addEventListener('change', debouncedSave);
+    }
+
+    const requireDirectDebitSignatureCheckbox = document.getElementById('requireDirectDebitSignature');
+    if (requireDirectDebitSignatureCheckbox) {
+        requireDirectDebitSignatureCheckbox.addEventListener('change', debouncedSave);
+    }
+
     // Save manual token when entered
     userSessionTokenField.addEventListener('input', () => {
         if (manualTokenModeCheckbox.checked) {
@@ -963,17 +1001,35 @@ manualTokenModeCheckbox.addEventListener('change', async () => {
 });
 
 // Manual token input validation
+let lastProcessedToken = '';
+let tokenInputTimeout = null;
+
 userSessionTokenField.addEventListener('input', async () => {
     if (manualTokenModeCheckbox.checked) {
         const token = userSessionTokenField.value.trim();
+
+        // Prevent processing the same token multiple times
+        if (token === lastProcessedToken) {
+            return;
+        }
+
+        // Clear any pending timeout
+        if (tokenInputTimeout) {
+            clearTimeout(tokenInputTimeout);
+        }
+
         if (token.length > 10) { // Basic validation
+            lastProcessedToken = token;
             updateTokenUI(token, null, true);
             logStatus('Manual token entered and validated', 'success');
-            
-            // Auto-mount widget after manual token entry
-            logStatus('Auto-mounting widget with manual token...', 'info');
-            await autoMountWidget();
+
+            // Debounce the auto-mount to prevent infinite loops
+            tokenInputTimeout = setTimeout(async () => {
+                logStatus('Auto-mounting widget with manual token...', 'info');
+                await autoMountWidget();
+            }, 300);
         } else {
+            lastProcessedToken = '';
             const tokenInfo = document.getElementById('tokenInfo');
             tokenInfo.classList.add('hidden');
         }
@@ -1061,7 +1117,15 @@ async function handleRedirectReturn() {
         if (devModeEnabled) {
             config.devMode = true;
         }
-        
+
+        // Add featureFlags if any are enabled (same as manual mount)
+        const useRubiksUI = document.getElementById('useRubiksUI').checked;
+        if (useRubiksUI) {
+            config.featureFlags = {
+                useRubiksUI: true
+            };
+        }
+
         logStatus(`Auto-mounting with Environment: ${config.environment}, Country: ${config.countryCode}`);
         
         await initializeWidget(config);
