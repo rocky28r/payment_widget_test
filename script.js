@@ -749,6 +749,11 @@ async function initializeWidget(config) {
     }
 
     // Fallback: continue with existing script
+    initializeWidgetAfterReload(config);
+}
+
+// Helper function to initialize widget after script reload
+function initializeWidgetAfterReload(config) {
     logStatus('Initializing payment widget...');
 
     // Check if the paymentWidget global object exists
