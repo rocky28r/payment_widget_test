@@ -629,12 +629,12 @@ async function createPaymentSession(sessionData) {
         requestBody.permittedPaymentChoices = sessionData.permittedPaymentChoices;
     }
 
-    // Always include requireDirectDebitSignature if it's a boolean
-    if (typeof sessionData.requireDirectDebitSignature === 'boolean') {
-        requestBody.requireDirectDebitSignature = sessionData.requireDirectDebitSignature;
-        console.log('✓ Added requireDirectDebitSignature to request body:', requestBody.requireDirectDebitSignature);
+    // Only include requireDirectDebitSignature when it's explicitly set to true
+    if (sessionData.requireDirectDebitSignature === true) {
+        requestBody.requireDirectDebitSignature = true;
+        console.log('✓ Added requireDirectDebitSignature to request body: true');
     } else {
-        console.log('✗ NOT adding requireDirectDebitSignature. Value:', sessionData.requireDirectDebitSignature, 'Type:', typeof sessionData.requireDirectDebitSignature);
+        console.log('✗ NOT adding requireDirectDebitSignature (checkbox not checked or false)');
     }
 
     console.log('Final request body before API call:', JSON.stringify(requestBody, null, 2));
