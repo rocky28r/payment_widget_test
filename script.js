@@ -228,14 +228,18 @@ function saveToLocalStorage() {
             customerId: document.getElementById('customerId').value,
             finionPayCustomerId: document.getElementById('finionPayCustomerId').value,
             permittedPaymentChoices: Array.from(document.querySelectorAll('.payment-method-checkbox:checked')).map(cb => cb.value),
+            requireDirectDebitSignature: document.getElementById('requireDirectDebitSignature').checked,
             debugMode: document.getElementById('debugMode').checked,
-            
+
             // Widget Configuration
             countryCode: document.getElementById('countryCode').value,
             environment: document.getElementById('environment').value,
             locale: document.getElementById('locale').value,
             manualTokenMode: document.getElementById('manualTokenMode').checked,
-            
+
+            // Feature Flags
+            useRubiksUI: document.getElementById('useRubiksUI').checked,
+
             // Styling Configuration
             stylingPreset: document.getElementById('stylingPreset').value,
             textColorMain: document.getElementById('textColorMain').value,
@@ -296,7 +300,12 @@ function loadFromLocalStorage() {
                 cb.checked = formData.permittedPaymentChoices.includes(cb.value);
             });
         }
-        
+
+        // Restore requireDirectDebitSignature
+        if (formData.requireDirectDebitSignature !== undefined) {
+            document.getElementById('requireDirectDebitSignature').checked = formData.requireDirectDebitSignature;
+        }
+
         // Restore debug mode
         if (formData.debugMode !== undefined) {
             document.getElementById('debugMode').checked = formData.debugMode;
@@ -307,7 +316,12 @@ function loadFromLocalStorage() {
         if (formData.countryCode) document.getElementById('countryCode').value = formData.countryCode;
         if (formData.environment) document.getElementById('environment').value = formData.environment;
         if (formData.locale) document.getElementById('locale').value = formData.locale;
-        
+
+        // Restore Feature Flags
+        if (formData.useRubiksUI !== undefined) {
+            document.getElementById('useRubiksUI').checked = formData.useRubiksUI;
+        }
+
         // Restore Styling Configuration
         if (formData.stylingPreset !== undefined) document.getElementById('stylingPreset').value = formData.stylingPreset;
         if (formData.textColorMain) document.getElementById('textColorMain').value = formData.textColorMain;
@@ -587,9 +601,12 @@ function updateTokenUI(token, expiry = null, isManual = false) {
 
 // API Functions
 async function createPaymentSession(sessionData) {
+    console.log('createPaymentSession called with sessionData:', sessionData);
+    console.log('sessionData.requireDirectDebitSignature:', sessionData.requireDirectDebitSignature, 'type:', typeof sessionData.requireDirectDebitSignature);
+
     const apiKey = document.getElementById('apiKey').value.trim();
     const baseUrl = document.getElementById('apiBaseUrl').value.trim();
-    
+
     const requestBody = {
         amount: parseFloat(sessionData.amount),
         scope: sessionData.scope
@@ -611,7 +628,17 @@ async function createPaymentSession(sessionData) {
     if (sessionData.permittedPaymentChoices?.length > 0) {
         requestBody.permittedPaymentChoices = sessionData.permittedPaymentChoices;
     }
-    
+
+    // Only include requireDirectDebitSignature when it's explicitly set to true
+    if (sessionData.requireDirectDebitSignature === true) {
+        requestBody.requireDirectDebitSignature = true;
+        console.log('✓ Added requireDirectDebitSignature to request body: true');
+    } else {
+        console.log('✗ NOT adding requireDirectDebitSignature (checkbox not checked or false)');
+    }
+
+    console.log('Final request body before API call:', JSON.stringify(requestBody, null, 2));
+
     // Debug logging for request
     logDebugInfo('API Request Headers', {
         'Content-Type': 'application/json',
@@ -679,49 +706,14 @@ async function unmountWidget() {
 async function initializeWidget(config) {
     // Unmount existing widget first
     await unmountWidget();
-    
+
     // Save current form data to preserve it during widget initialization
     try {
-        logStatus('Preserving form data during widget initialization...', 'info');
         saveToLocalStorage();
     } catch (error) {
         logStatus(`Form data preservation error: ${error.message}`, 'warn');
     }
-    
-    // Force reload the widget script to get a fresh instance
-    logStatus('Reloading widget script to ensure fresh client_key...', 'info');
-    
-    try {
-        // Remove existing script tag
-        const existingScript = document.querySelector('script[src*="spa-payment-widget"]');
-        if (existingScript) {
-            existingScript.remove();
-            // Clear the global paymentWidget object
-            if (typeof paymentWidget !== 'undefined') {
-                delete window.paymentWidget;
-            }
-        }
-        
-        // Add fresh script tag with cache-busting
-        const script = document.createElement('script');
-        script.src = `https://widget.dev.payment.sportalliance.com/spa-payment/widget.js?t=${Date.now()}`;
-        script.onload = () => {
-            logStatus('Widget script reloaded successfully', 'success');
-            // Proceed with initialization after script loads
-            setTimeout(() => initializeWidgetAfterReload(config), 100);
-        };
-        script.onerror = () => {
-            logStatus('Failed to reload widget script', 'error');
-        };
-        document.head.appendChild(script);
-        
-        return; // Exit here, initialization continues in initializeWidgetAfterReload
-        
-    } catch (error) {
-        logStatus(`Script reload error: ${error.message}`, 'warn');
-    }
-    
-    // Fallback: continue with existing script
+
     logStatus('Initializing payment widget...');
 
     // Check if the paymentWidget global object exists
@@ -734,59 +726,24 @@ async function initializeWidget(config) {
 
     try {
         logStatus('Calling paymentWidget.init()...');
-        
+
         // Debug log the config (excluding sensitive callbacks)
         logDebugInfo('Widget Configuration', {
             ...config,
             onSuccess: '[Function]',
             onError: '[Function]'
         });
-        
+
         widgetInstance = paymentWidget.init(config);
         logStatus('Payment widget initialized successfully!', 'success');
         console.log('Payment widget initialized successfully.');
     } catch (error) {
         const errorMsg = `Widget initialization failed: ${error.message || 'Unknown error'}`;
         logStatus(errorMsg, 'error');
-        
+
         // Reset widget instance on error
         widgetInstance = null;
-        
-        console.error('Failed to initialize payment widget:', error);
-    }
-}
 
-async function initializeWidgetAfterReload(config) {
-    logStatus('Initializing payment widget with fresh script...');
-
-    // Check if the paymentWidget global object exists
-    if (typeof paymentWidget === 'undefined') {
-        const errorMsg = 'Payment widget library not loaded after reload';
-        logStatus(errorMsg, 'error');
-        console.error("Payment widget library 'paymentWidget' is undefined after reload");
-        return;
-    }
-
-    try {
-        logStatus('Calling paymentWidget.init() with fresh instance...');
-        
-        // Debug log the config (excluding sensitive callbacks)
-        logDebugInfo('Widget Configuration', {
-            ...config,
-            onSuccess: '[Function]',
-            onError: '[Function]'
-        });
-        
-        widgetInstance = paymentWidget.init(config);
-        logStatus('Payment widget initialized successfully with fresh client_key!', 'success');
-        console.log('Payment widget initialized successfully.');
-    } catch (error) {
-        const errorMsg = `Widget initialization failed: ${error.message || 'Unknown error'}`;
-        logStatus(errorMsg, 'error');
-        
-        // Reset widget instance on error
-        widgetInstance = null;
-        
         console.error('Failed to initialize payment widget:', error);
     }
 }
@@ -859,7 +816,16 @@ async function autoMountWidget() {
             config.devMode = true;
             logStatus('Development mode enabled - translation keys will be visible', 'info');
         }
-        
+
+        // Add featureFlags if any are enabled
+        const useRubiksUI = document.getElementById('useRubiksUI').checked;
+        if (useRubiksUI) {
+            config.featureFlags = {
+                useRubiksUI: true
+            };
+            logStatus('Feature flag enabled: useRubiksUI', 'info');
+        }
+
         logStatus(`Auto-mounting payment widget...`);
         logStatus(`Environment: ${config.environment}, Country: ${config.countryCode}`);
         
@@ -885,9 +851,13 @@ createSessionBtn.addEventListener('click', async () => {
         referenceText: document.getElementById('referenceText').value,
         customerId: document.getElementById('customerId').value,
         finionPayCustomerId: document.getElementById('finionPayCustomerId').value,
-        permittedPaymentChoices: Array.from(document.querySelectorAll('.payment-method-checkbox:checked')).map(cb => cb.value)
+        permittedPaymentChoices: Array.from(document.querySelectorAll('.payment-method-checkbox:checked')).map(cb => cb.value),
+        requireDirectDebitSignature: document.getElementById('requireDirectDebitSignature').checked
     };
-    
+
+    console.log('Form data collected:', formData);
+    console.log('requireDirectDebitSignature value:', formData.requireDirectDebitSignature, 'type:', typeof formData.requireDirectDebitSignature);
+
     // Validate form
     const errors = validateForm(formData);
     if (errors.length > 0) {
@@ -980,7 +950,17 @@ function setupAutoSave() {
     if (devModeCheckbox) {
         devModeCheckbox.addEventListener('change', debouncedSave);
     }
-    
+
+    const useRubiksUICheckbox = document.getElementById('useRubiksUI');
+    if (useRubiksUICheckbox) {
+        useRubiksUICheckbox.addEventListener('change', debouncedSave);
+    }
+
+    const requireDirectDebitSignatureCheckbox = document.getElementById('requireDirectDebitSignature');
+    if (requireDirectDebitSignatureCheckbox) {
+        requireDirectDebitSignatureCheckbox.addEventListener('change', debouncedSave);
+    }
+
     // Save manual token when entered
     userSessionTokenField.addEventListener('input', () => {
         if (manualTokenModeCheckbox.checked) {
@@ -1033,17 +1013,35 @@ manualTokenModeCheckbox.addEventListener('change', async () => {
 });
 
 // Manual token input validation
+let lastProcessedToken = '';
+let tokenInputTimeout = null;
+
 userSessionTokenField.addEventListener('input', async () => {
     if (manualTokenModeCheckbox.checked) {
         const token = userSessionTokenField.value.trim();
+
+        // Prevent processing the same token multiple times
+        if (token === lastProcessedToken) {
+            return;
+        }
+
+        // Clear any pending timeout
+        if (tokenInputTimeout) {
+            clearTimeout(tokenInputTimeout);
+        }
+
         if (token.length > 10) { // Basic validation
+            lastProcessedToken = token;
             updateTokenUI(token, null, true);
             logStatus('Manual token entered and validated', 'success');
-            
-            // Auto-mount widget after manual token entry
-            logStatus('Auto-mounting widget with manual token...', 'info');
-            await autoMountWidget();
+
+            // Debounce the auto-mount to prevent infinite loops
+            tokenInputTimeout = setTimeout(async () => {
+                logStatus('Auto-mounting widget with manual token...', 'info');
+                await autoMountWidget();
+            }, 300);
         } else {
+            lastProcessedToken = '';
             const tokenInfo = document.getElementById('tokenInfo');
             tokenInfo.classList.add('hidden');
         }
@@ -1131,7 +1129,15 @@ async function handleRedirectReturn() {
         if (devModeEnabled) {
             config.devMode = true;
         }
-        
+
+        // Add featureFlags if any are enabled (same as manual mount)
+        const useRubiksUI = document.getElementById('useRubiksUI').checked;
+        if (useRubiksUI) {
+            config.featureFlags = {
+                useRubiksUI: true
+            };
+        }
+
         logStatus(`Auto-mounting with Environment: ${config.environment}, Country: ${config.countryCode}`);
         
         await initializeWidget(config);

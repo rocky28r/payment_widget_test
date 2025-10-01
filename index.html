@@ -122,6 +122,19 @@
                             </select>
                         </div>
 
+                        <!-- Feature Flags -->
+                        <div class="border-t border-gray-100 pt-6">
+                            <h3 class="text-sm font-medium text-gray-900 mb-4">Feature Flags</h3>
+
+                            <div class="space-y-3">
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="useRubiksUI" class="rounded border-gray-300 text-green-600 focus:ring-green-500">
+                                    <span class="ml-2 text-sm font-medium text-gray-900">Use Rubiks UI</span>
+                                </label>
+                                <p class="mt-1 text-xs text-gray-500 ml-6">Enable the new Rubiks UI design system for the payment widget</p>
+                            </div>
+                        </div>
+
                         <!-- Styling Configuration -->
                         <div class="border-t border-gray-100 pt-6">
                             <h3 class="text-sm font-medium text-gray-900 mb-4">Custom Styling</h3>
@@ -360,6 +373,15 @@
                                     >
                                 </div>
                             </div>
+
+                            <!-- Direct Debit Signature -->
+                            <div class="mt-4">
+                                <label class="flex items-center">
+                                    <input type="checkbox" id="requireDirectDebitSignature" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                    <span class="ml-2 text-sm font-medium text-gray-900">Require Direct Debit Signature</span>
+                                </label>
+                                <p class="mt-1 text-xs text-gray-500 ml-6">When enabled, direct debit forms (SEPA, CH_DD, LSV) will require a signature field</p>
+                            </div>
                         </div>
 
                         <!-- Payment Methods -->
@@ -506,7 +528,7 @@
     </div>
 
     <!-- The JavaScript component to be loaded -->
-    <script src="https://widget.dev.payment.sportalliance.com/spa-payment/widget.js"></script>
+    <script src="https://widget.dev.payment.sportalliance.com/widget.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
