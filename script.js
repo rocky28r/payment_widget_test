@@ -601,9 +601,12 @@ function updateTokenUI(token, expiry = null, isManual = false) {
 
 // API Functions
 async function createPaymentSession(sessionData) {
+    console.log('createPaymentSession called with sessionData:', sessionData);
+    console.log('sessionData.requireDirectDebitSignature:', sessionData.requireDirectDebitSignature, 'type:', typeof sessionData.requireDirectDebitSignature);
+
     const apiKey = document.getElementById('apiKey').value.trim();
     const baseUrl = document.getElementById('apiBaseUrl').value.trim();
-    
+
     const requestBody = {
         amount: parseFloat(sessionData.amount),
         scope: sessionData.scope
@@ -626,9 +629,15 @@ async function createPaymentSession(sessionData) {
         requestBody.permittedPaymentChoices = sessionData.permittedPaymentChoices;
     }
 
-    if (sessionData.requireDirectDebitSignature !== undefined) {
+    // Always include requireDirectDebitSignature if it's a boolean
+    if (typeof sessionData.requireDirectDebitSignature === 'boolean') {
         requestBody.requireDirectDebitSignature = sessionData.requireDirectDebitSignature;
+        console.log('✓ Added requireDirectDebitSignature to request body:', requestBody.requireDirectDebitSignature);
+    } else {
+        console.log('✗ NOT adding requireDirectDebitSignature. Value:', sessionData.requireDirectDebitSignature, 'Type:', typeof sessionData.requireDirectDebitSignature);
     }
+
+    console.log('Final request body before API call:', JSON.stringify(requestBody, null, 2));
 
     // Debug logging for request
     logDebugInfo('API Request Headers', {
@@ -845,7 +854,10 @@ createSessionBtn.addEventListener('click', async () => {
         permittedPaymentChoices: Array.from(document.querySelectorAll('.payment-method-checkbox:checked')).map(cb => cb.value),
         requireDirectDebitSignature: document.getElementById('requireDirectDebitSignature').checked
     };
-    
+
+    console.log('Form data collected:', formData);
+    console.log('requireDirectDebitSignature value:', formData.requireDirectDebitSignature, 'type:', typeof formData.requireDirectDebitSignature);
+
     // Validate form
     const errors = validateForm(formData);
     if (errors.length > 0) {
