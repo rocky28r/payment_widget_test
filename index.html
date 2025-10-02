@@ -12,23 +12,10 @@
 </head>
 <body class="h-full bg-gray-50">
     <div class="min-h-screen">
-        <!-- Header -->
-        <header class="bg-white shadow-sm border-b border-gray-200">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="flex items-center justify-between h-16">
-                    <div class="flex items-center">
-                        <h1 class="text-xl font-semibold text-gray-900">Payment Widget Test Suite</h1>
-                    </div>
-                    <div class="flex items-center space-x-4">
-                        <div class="text-sm text-gray-500">
-                            <span id="statusIndicator" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                Ready
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </header>
+        <!-- Navigation injected by nav.js -->
+
+        <!-- Add top padding to account for fixed nav -->
+        <div class="pt-16"></div>
 
         <!-- Main Content -->
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -279,33 +266,12 @@
                         <p class="mt-1 text-sm text-gray-500">Configure API and create user payment session</p>
                     </div>
                     <div class="p-6 space-y-6">
-                        <!-- API Configuration -->
-                        <div>
-                            <label for="apiKey" class="block text-sm font-medium text-gray-700 mb-2">
-                                API Key <span class="text-red-500">*</span>
-                            </label>
-                            <input 
-                                type="password" 
-                                id="apiKey" 
-                                placeholder="Enter your API key"
-                                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                                required
-                            >
-                            <p class="mt-1 text-xs text-gray-500">API key for X-API-KEY header</p>
-                        </div>
-
-                        <div>
-                            <label for="apiBaseUrl" class="block text-sm font-medium text-gray-700 mb-2">API Base URL</label>
-                            <input 
-                                type="url" 
-                                id="apiBaseUrl" 
-                                placeholder="Enter your base URL"
-                                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                            >
-                        </div>
+                        <!-- Hidden fields for API configuration (populated by global config) -->
+                        <input type="hidden" id="apiKey">
+                        <input type="hidden" id="apiBaseUrl">
 
                         <!-- Session Parameters -->
-                        <div class="border-t border-gray-100 pt-6">
+                        <div>
                             <h3 class="text-sm font-medium text-gray-900 mb-4">Session Parameters</h3>
                             
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -516,6 +482,21 @@
 
     <!-- The JavaScript component to be loaded -->
     <script src="https://widget.dev.payment.sportalliance.com/widget.js"></script>
+    <script src="config.js"></script>
+    <script src="nav.js"></script>
+    <script>
+        // Initialize navigation for this page
+        Navigation.init('payment-test');
+
+        // Load global config into hidden fields
+        window.addEventListener('DOMContentLoaded', () => {
+            const globalConfig = GlobalConfig.load();
+            if (globalConfig) {
+                document.getElementById('apiKey').value = globalConfig.apiKey || '';
+                document.getElementById('apiBaseUrl').value = globalConfig.baseUrl || '';
+            }
+        });
+    </script>
     <script src="script.js"></script>
 </body>
 </html>

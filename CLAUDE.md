@@ -11,6 +11,7 @@ This is a comprehensive Payment Widget Test Suite that integrates with the Finio
 **Multi-file Structure**: The application is organized into separate files for better maintainability:
 - `index.html` - Main HTML structure with three-section layout and modern responsive design
 - `styles.css` - Custom CSS styles (font family and transition effects)
+- `config.js` - Centralized API and widget configuration (shared across entire application)
 - `script.js` - Comprehensive JavaScript for API integration, session management, and widget control
 
 **Three-Section Layout**:
@@ -26,6 +27,36 @@ This is a comprehensive Payment Widget Test Suite that integrates with the Finio
 **Widget API**:
 - Initialization: `window.paymentWidget.init(config)` returns `{ destroy(): void }`
 - Cleanup: Call `widgetInstance.destroy()` to unmount and cleanup resources
+
+## Centralized Configuration
+
+**config.js**: Provides centralized API and widget configuration used throughout the application:
+- `API_CONFIG`: Base URLs, endpoints, headers configuration, and helper methods
+- `WIDGET_CONFIG`: Widget script URL and default settings
+- `STORAGE_CONFIG`: Local storage keys and versioning
+
+**Global API Configuration** (nav.js - `GlobalConfig` class):
+- Access via the "Config" button (gear icon) in the navigation bar
+- Set API Key and Base URL once, used across all pages
+- Automatically syncs to both Payment Widget Test and Contract Flow pages
+- Persisted in localStorage under `globalApiConfig` key
+
+**Usage**:
+```javascript
+// Get API headers with authentication
+const headers = API_CONFIG.getHeaders(apiKey);
+
+// Get full API URL
+const url = `${baseUrl}${API_CONFIG.endpoints.userSession}`;
+
+// Use widget configuration
+script.src = `${WIDGET_CONFIG.scriptUrl}?t=${Date.now()}`;
+
+// Access global configuration
+GlobalConfig.open();  // Open config modal
+GlobalConfig.save();  // Save and sync configuration
+GlobalConfig.load();  // Load saved configuration
+```
 
 ## API Integration
 

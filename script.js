@@ -43,9 +43,9 @@ const STYLING_PRESETS = {
     }
 };
 
-// Local Storage Keys
-const STORAGE_KEY = 'paymentWidgetTestSuite';
-const STORAGE_VERSION = '1.1';
+// Local Storage Keys (use centralized config)
+const STORAGE_KEY = STORAGE_CONFIG.key;
+const STORAGE_VERSION = STORAGE_CONFIG.version;
 
 // URL Parameter Detection
 function detectRedirectReturn() {
@@ -605,7 +605,7 @@ async function createPaymentSession(sessionData) {
     console.log('sessionData.requireDirectDebitSignature:', sessionData.requireDirectDebitSignature, 'type:', typeof sessionData.requireDirectDebitSignature);
 
     const apiKey = document.getElementById('apiKey').value.trim();
-    const baseUrl = document.getElementById('apiBaseUrl').value.trim();
+    const baseUrl = document.getElementById('apiBaseUrl').value.trim() || API_CONFIG.baseUrl;
 
     const requestBody = {
         amount: parseFloat(sessionData.amount),
@@ -640,18 +640,17 @@ async function createPaymentSession(sessionData) {
     console.log('Final request body before API call:', JSON.stringify(requestBody, null, 2));
 
     // Debug logging for request
+    const headers = API_CONFIG.getHeaders(apiKey);
     logDebugInfo('API Request Headers', {
-        'Content-Type': 'application/json',
+        'Content-Type': headers['Content-Type'],
         'X-API-KEY': apiKey.substring(0, 8) + '...' // Partial key for security
     });
     logDebugInfo('API Request Body', requestBody);
-    
-    const response = await fetch(`${baseUrl}/v1/payments/user-session`, {
+
+    const url = `${baseUrl}${API_CONFIG.endpoints.userSession}`;
+    const response = await fetch(url, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-API-KEY': apiKey
-        },
+        headers: headers,
         body: JSON.stringify(requestBody)
     });
     
@@ -731,7 +730,7 @@ async function initializeWidget(config) {
 
         // Add fresh script tag with cache-busting
         const script = document.createElement('script');
-        script.src = `https://widget.dev.payment.sportalliance.com/widget.js?t=${Date.now()}`;
+        script.src = `${WIDGET_CONFIG.scriptUrl}?t=${Date.now()}`;
         script.onload = () => {
             logStatus('Widget script reloaded successfully', 'success');
             // Proceed with initialization after script loads
