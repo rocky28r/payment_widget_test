@@ -1281,9 +1281,11 @@ function cleanupWidget(widgetInstance) {
 async function initializeRecurringPaymentStep() {
     console.log('Initializing Step 5: Recurring Payment');
 
-    // Cleanup any existing widget
+    // Cleanup ALL existing widgets to ensure complete isolation
     cleanupWidget(paymentWidgetInstances.recurring);
     paymentWidgetInstances.recurring = null;
+    cleanupWidget(paymentWidgetInstances.upfront);
+    paymentWidgetInstances.upfront = null;
 
     // Clear the container DOM to ensure clean mount
     const containerEl = document.getElementById('recurring-payment-container');
@@ -1397,7 +1399,9 @@ async function loadRecurringPaymentWidget() {
 async function initializeUpfrontPaymentStep() {
     console.log('Initializing Step 6: Upfront Payment');
 
-    // Cleanup any existing widget
+    // Cleanup ALL existing widgets to ensure complete isolation
+    cleanupWidget(paymentWidgetInstances.recurring);
+    paymentWidgetInstances.recurring = null;
     cleanupWidget(paymentWidgetInstances.upfront);
     paymentWidgetInstances.upfront = null;
 
