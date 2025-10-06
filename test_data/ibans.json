@@ -1,0 +1,69 @@
+{
+  "test_ibans": [
+    {
+      "iban": "DE02120300000000202051",
+      "bic": "BYLADEM1001",
+      "bank": "DEUTSCHE KREDITBANK BERLIN"
+    },
+    {
+      "iban": "DE02500105170137075030",
+      "bic": "INGDDEFF",
+      "bank": "ING-DIBA"
+    },
+    {
+      "iban": "DE02100500000054540402",
+      "bic": "BELADEBE",
+      "bank": "LANDESBANK BERLIN"
+    },
+    {
+      "iban": "DE02300209000106531065",
+      "bic": "CMCIDEDD",
+      "bank": "TARGOBANK"
+    },
+    {
+      "iban": "DE02200505501015871393",
+      "bic": "HASPDEHH",
+      "bank": "HAMBURGER SPARKASSE"
+    },
+    {
+      "iban": "DE02100100100006820101",
+      "bic": "PBNKDEFF",
+      "bank": "POSTBANK"
+    },
+    {
+      "iban": "DE02300606010002474689",
+      "bic": "DAAEDEDD",
+      "bank": "APOBANK"
+    },
+    {
+      "iban": "DE02600501010002034304",
+      "bic": "SOLADEST600",
+      "bank": "LANDESBANK BADEN-WÜRTTEMBERG"
+    },
+    {
+      "iban": "DE02700202700010108669",
+      "bic": "HYVEDEMM",
+      "bank": "UNICREDIT BANK - HYPOVEREINSBANK"
+    },
+    {
+      "iban": "DE02700100800030876808",
+      "bic": "PBNKDEFF",
+      "bank": "POSTBANK (GIRO)"
+    },
+    {
+      "iban": "DE02370502990000684712",
+      "bic": "COKSDE33",
+      "bank": "KREISSPARKASSE KÖLN"
+    },
+    {
+      "iban": "DE88100900001234567892",
+      "bic": "BEVODEBB",
+      "bank": "BERLINER VOLKSBANK"
+    },
+    {
+      "iban": "DE02701500000000594937",
+      "bic": "SSKMDEMM",
+      "bank": "STADTSPARKASSE MÜNCHEN"
+    }
+  ]
+}

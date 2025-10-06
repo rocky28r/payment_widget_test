@@ -74,6 +74,13 @@ GlobalConfig.load();  // Load saved configuration
 
 **Response**: Returns session token and expiry timestamp
 
+**Contract Flow Integration**: When creating payment sessions in the contract flow:
+- For `MEMBER_ACCOUNT` scope: Uses `allowedPaymentChoices` from the selected membership offer (field name in API response)
+- For `ECOM` scope: Restricts to one-time payment methods only (CREDIT_CARD, PAYPAL, TWINT, IDEAL, BANCONTACT)
+- All payment choices from offer are passed, including CASH and BANK_TRANSFER
+- Fallback defaults include: SEPA, BACS, CREDIT_CARD, CASH, BANK_TRANSFER
+- Implementation: `contract-flow-steps.js:1330` `createPaymentSession()` function
+
 ## Development Commands
 
 Since this is a static website with separate HTML, CSS, and JS files, no build process is required:
@@ -97,6 +104,78 @@ Since this is a static website with separate HTML, CSS, and JS files, no build p
 **Loading States**: Visual feedback during API calls and widget mounting operations.
 
 **Payment Methods**: Supports CREDIT_CARD, PAYPAL, SEPA, BACS, TWINT, IDEAL, and other payment types.
+
+## Membership Offer Cost Display
+
+**Contract Flow - Step 2: Offer Details** implements a streamlined, transparent cost display system:
+
+**Design Strategy**:
+1. **Cost Hierarchy** - Most important costs shown first (hero card)
+2. **Visual Timeline** - Chronological display with intelligent deduplication
+3. **Single Source of Truth** - "What's Included" consolidates all contract terms
+4. **No Redundancy** - Information appears once, in the most relevant location
+5. **Smart Condensing** - Timeline hides duplicate pricing, shows only when it changes
+
+**Implementation Components**:
+
+**1. Hero Cost Summary Card** (Gradient blue card, most prominent)
+- Starting price with large, bold typography (from `term.paymentFrequency.price` or `term.rateStartPrice`)
+- Setup fees and one-time costs (from `term.flatFees`)
+- Total contract value over initial term (from `term.contractVolumeInformation.totalContractVolume`)
+- Safe price formatting using `formatCurrencyDecimal()` for API decimal values
+
+**2. Contract Timeline Visualization** (Intelligently condensed)
+- 🟢 **Green**: Promotional/bonus periods (from `term.rateBonusPeriods`) - only if present
+- 🔵 **Blue**: Initial membership period with pricing
+- 🟣 **Purple**: Extension period - **ONLY shown if price actually changes**
+  - Automatically hidden if extension price equals initial price
+  - Eliminates redundant €10.00/mo → €10.00/mo display
+- Uses `priceChangesAfterInitialTerm` check to prevent duplication
+
+**3. Price Adjustments & Changes** (Amber warning box)
+- Only shown if `term.priceAdjustmentRules` exist
+- All future price changes with icons (📈 RAISE, 📉 REDUCTION, 💰 NEW_BASIC_AMOUNT)
+- Default description from API
+- Ensures transparency for future pricing
+
+**4. What's Included** (Comprehensive single section - NOT expandable)
+- **Included Modules**: List of all `includedModules` with descriptions
+- **Contract Terms**: Two-column grid with all term details:
+  - Cancellation Period (from `term.cancelationPeriod`)
+  - Extension Term (from `term.extensionTerm`)
+  - Contract Start Date (from `term.defaultContractStartDate`)
+  - Start Date of Use (from `term.defaultContractStartDateOfUse`, if different)
+  - Auto-Renewal (derived from `term.extensionType !== 'NONE'`)
+  - Cancellation Strategy (formatted from `term.cancelationStrategy`)
+- **Cancellation & Refund Policy**: Yellow warning box with bullets
+  - Cancellation period details
+  - Fee information
+  - Pro-rata refund policy
+- **Accepted Payment Methods**: Pills display of `allowedPaymentChoices`
+- **Footnote**: Legal/contractual comments if present
+
+**Removed Sections** (eliminated redundancy):
+- ❌ "Detailed Cost Breakdown" expandable - removed (price already in hero + timeline)
+- ❌ "Contract Terms" expandable - removed (consolidated into "What's Included")
+- ❌ Duplicate timeline entries - hidden when price doesn't change
+
+**API Data Sources**: Uses `/v1/memberships/membership-offers/{membershipOfferId}` endpoint:
+- `terms[0].paymentFrequency.price` - Primary price location
+- `terms[0].rateStartPrice` - Fallback price location
+- `terms[0].contractVolumeInformation` - Total and average costs
+- `terms[0].rateBonusPeriods` - Promotional periods
+- `terms[0].priceAdjustmentRules` - Future price changes
+- `terms[0].flatFees` - One-time setup costs
+- `terms[0].cancelationPeriod`, `extensionTerm`, `cancelationStrategy` - Contract terms
+- `allowedPaymentChoices` - Payment methods
+
+**Benefits**:
+- ✅ **No redundancy** - Each piece of information appears exactly once
+- ✅ **Cleaner layout** - Less vertical space, easier to scan
+- ✅ **Intelligent condensing** - Timeline adapts based on actual price changes
+- ✅ **Single source of truth** - "What's Included" is comprehensive
+- ✅ **Proper price location** - Uses `paymentFrequency.price` per API structure
+- ✅ **Better UX** - Users don't see duplicate €10.00/mo three times
 
 ## Widget Configuration
 
@@ -151,3 +230,22 @@ The `onSuccess` callback receives two parameters:
 **Progressive Disclosure**: Form fields and buttons enable/disable based on state
 **Real-time Feedback**: Immediate validation and status updates
 **Accessibility**: Proper labeling, focus states, and keyboard navigation
+
+## Test Data
+
+The `test_data/` directory contains test payment credentials for automated testing:
+
+**cards.json**: Test credit/debit card numbers for various card brands and countries
+- American Express, Bancontact, Cartes Bancaires, China UnionPay, Dankort, Diners, Discover, JCB, Maestro, Mastercard, Visa, Visa Electron, V Pay
+- Each card includes: card number, expiry date, CVC, issuer country
+- Some cards support 3D Secure authentication (marked with `secure3DS: true`)
+- Test data format: `{ "cardnumber": "4111 1111 1111 1111", "expiry": "03/30", "CVC": "737", "country": "NL" }`
+
+**ibans.json**: Test IBAN bank account numbers for SEPA Direct Debit
+- 13 test German IBANs with corresponding BIC codes and bank names
+- Test data format: `{ "iban": "DE02...", "bic": "...", "bank": "..." }`
+
+**bacs_dd.json**: Test BACS Direct Debit account for UK payments
+- Account name: David Archer
+- Account number: 09083055
+- Sort code: 560036

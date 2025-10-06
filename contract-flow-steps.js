@@ -487,117 +487,231 @@ async function initializeOfferDetailsStep() {
         document.getElementById('offer-detail-name').textContent = offerDetails.name || 'Membership Offer';
         document.getElementById('offer-detail-description').textContent = offerDetails.description || '';
 
-        // Display pricing information
+        // Display pricing information with comprehensive, transparent breakdown
         const pricingEl = document.getElementById('offer-detail-pricing');
-        let pricingHTML = '<h3 class="text-lg font-semibold text-gray-900 mb-4">Pricing</h3><div class="space-y-3">';
+        let pricingHTML = '';
 
         // Show terms and pricing
         if (offerDetails.terms && offerDetails.terms.length > 0) {
             const term = offerDetails.terms[0]; // Use first term
-            const currency = term.rateStartPrice?.currency || 'EUR';
 
-            // Monthly/Recurring Price
-            if (term.rateStartPrice) {
-                pricingHTML += `
-                    <div class="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
-                        <span class="text-gray-700 font-medium">Recurring Price:</span>
-                        <span class="text-2xl font-bold text-blue-600">${formatCurrency(term.rateStartPrice.amount, term.rateStartPrice.currency)}</span>
-                    </div>
-                `;
-            }
+            // Get monthly price from correct location (paymentFrequency.price or fallback to rateStartPrice)
+            const getTermPrice = () => {
+                // Try paymentFrequency.price first (primary location)
+                if (term.paymentFrequency?.price) {
+                    return term.paymentFrequency.price;
+                }
+                // Fallback to rateStartPrice (legacy field)
+                if (term.rateStartPrice) {
+                    return term.rateStartPrice;
+                }
+                return null;
+            };
 
-            // Show flat fees (starter packages, etc.)
-            let hasStarterPackage = false;
-            let starterPackageAmount = 0;
-            if (term.flatFees && term.flatFees.length > 0) {
-                term.flatFees.forEach(fee => {
-                    if (fee.starterPackage && fee.price) {
-                        hasStarterPackage = true;
-                        starterPackageAmount += fee.price.amount || 0;
-                    }
+            const termPrice = getTermPrice();
+            const currency = termPrice?.currency || 'EUR';
+
+            // Helper to safely format price (API returns decimal values, not cents)
+            const safePriceFormat = (priceObj) => {
+                if (!priceObj) return null;
+                const amount = priceObj.amount;
+                const curr = priceObj.currency || currency;
+                return formatCurrencyDecimal(amount, curr);
+            };
+
+            // ============================================================
+            // 1. HERO COST SUMMARY CARD
+            // ============================================================
+            pricingHTML += '<div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white mb-6 shadow-lg">';
+            pricingHTML += '<h3 class="text-lg font-semibold mb-4 opacity-90">Cost Summary</h3>';
+            pricingHTML += '<div class="space-y-3">';
+
+            // Starting Price (most prominent)
+            if (termPrice) {
+                const formattedPrice = safePriceFormat(termPrice);
+                if (formattedPrice) {
                     pricingHTML += `
-                        <div class="flex justify-between items-center text-sm">
-                            <span class="text-gray-600">${fee.name}${fee.starterPackage ? ' (One-time)' : ''}:</span>
-                            <span class="font-medium">${fee.price ? formatCurrency(fee.price.amount, fee.price.currency) : fee.formattedPaymentFrequency || 'N/A'}</span>
+                        <div class="flex justify-between items-baseline">
+                            <span class="text-sm opacity-90">Starting at</span>
+                            <div class="text-right">
+                                <div class="text-4xl font-bold">${formattedPrice}</div>
+                                <div class="text-sm opacity-75">per month</div>
+                            </div>
                         </div>
                     `;
+                }
+            }
+
+            // One-time fees (if any)
+            let oneTimeFeesTotal = 0;
+            let hasOneTimeFees = false;
+            if (term.flatFees && term.flatFees.length > 0) {
+                term.flatFees.forEach(fee => {
+                    if (fee.starterPackage && fee.price?.amount) {
+                        oneTimeFeesTotal += fee.price.amount;
+                        hasOneTimeFees = true;
+                    }
+                });
+                if (hasOneTimeFees && oneTimeFeesTotal > 0) {
+                    pricingHTML += `
+                        <div class="flex justify-between items-center text-sm pt-2 border-t border-white border-opacity-20">
+                            <span class="opacity-90">Setup Fee</span>
+                            <span class="font-semibold">${formatCurrencyDecimal(oneTimeFeesTotal, currency)}</span>
+                        </div>
+                    `;
+                }
+            }
+
+            // Total contract value (use API data if available)
+            if (term.contractVolumeInformation?.totalContractVolume) {
+                const total = term.contractVolumeInformation.totalContractVolume;
+                const formattedTotal = safePriceFormat(total);
+                if (formattedTotal) {
+                    pricingHTML += `
+                        <div class="flex justify-between items-baseline pt-3 border-t border-white border-opacity-20">
+                            <div>
+                                <div class="text-sm opacity-90">Total Contract Value</div>
+                                <div class="text-xs opacity-75">over initial term</div>
+                            </div>
+                            <div class="text-2xl font-bold">${formattedTotal}</div>
+                        </div>
+                    `;
+                }
+            }
+
+            pricingHTML += '</div></div>'; // Close hero card
+
+            // ============================================================
+            // 2. CONTRACT TIMELINE VISUALIZATION
+            // ============================================================
+            pricingHTML += '<div class="bg-white border border-gray-200 rounded-lg p-5 mb-4">';
+            pricingHTML += '<h4 class="text-md font-semibold text-gray-900 mb-4">Contract Timeline</h4>';
+
+            // Timeline visualization
+            pricingHTML += '<div class="relative">';
+
+            let hasTimeline = false;
+            const afterPrice = term.priceAfterExtension || termPrice;
+            const priceChangesAfterInitialTerm = afterPrice && termPrice && afterPrice.amount !== termPrice.amount;
+
+            // Bonus Periods (promotional/free periods)
+            if (term.rateBonusPeriods && term.rateBonusPeriods.length > 0) {
+                hasTimeline = true;
+                term.rateBonusPeriods.forEach((bonus, index) => {
+                    if (bonus.term) {
+                        const bonusTerm = bonus.term;
+                        pricingHTML += `
+                            <div class="flex items-start mb-3 ${index > 0 ? 'mt-2' : ''}">
+                                <div class="flex-shrink-0 w-3 h-3 mt-1 rounded-full bg-green-500"></div>
+                                <div class="ml-3 flex-1">
+                                    <div class="flex justify-between items-start">
+                                        <div>
+                                            <div class="font-semibold text-green-700">Promotional Period</div>
+                                            <div class="text-sm text-gray-600">${bonusTerm.value} ${bonusTerm.unit.toLowerCase()}${bonusTerm.value > 1 ? 's' : ''}</div>
+                                        </div>
+                                        <div class="text-right">
+                                            <div class="font-bold text-green-600">${formatCurrencyDecimal(0, currency)}/mo</div>
+                                            ${bonus.displaySeparately ? '<div class="text-xs text-gray-500">Not included in total</div>' : ''}
+                                        </div>
+                                    </div>
+                                    ${bonus.extendsCancellationPeriod ? '<div class="text-xs text-amber-600 mt-1">⚠️ Extends cancellation period</div>' : ''}
+                                </div>
+                            </div>
+                        `;
+                    }
                 });
             }
 
-            // Calculate total contract value over minimum term
-            if (term.rateStartPrice && term.term) {
-                const monthlyAmount = term.rateStartPrice.amount / 100;
-                const termMonths = term.term.unit === 'MONTH' ? term.term.value : term.term.value * 12;
-                const recurringTotal = monthlyAmount * termMonths;
-                const starterTotal = starterPackageAmount / 100;
-                const totalValue = recurringTotal + starterTotal;
+            // Initial Term - show starting price with contract info
+            if (termPrice) {
+                hasTimeline = true;
+                const startPrice = safePriceFormat(termPrice);
+                // Try to get term info from cancellation period or extension term
+                let termInfo = '';
+                if (term.cancelationPeriod) {
+                    termInfo = `${term.cancelationPeriod.value} ${term.cancelationPeriod.unit.toLowerCase()}${term.cancelationPeriod.value > 1 ? 's' : ''} cancellation period`;
+                } else if (term.extensionTerm) {
+                    termInfo = `${term.extensionTerm.value} ${term.extensionTerm.unit.toLowerCase()}${term.extensionTerm.value > 1 ? 's' : ''} renewal term`;
+                } else {
+                    termInfo = 'Ongoing membership';
+                }
 
                 pricingHTML += `
-                    <div class="mt-4 p-3 bg-gradient-to-r from-purple-50 to-blue-50 border-2 border-purple-200 rounded-lg">
-                        <div class="flex justify-between items-center">
-                            <span class="text-gray-900 font-semibold">Total Contract Value:</span>
-                            <span class="text-2xl font-bold text-purple-700">${currency} ${totalValue.toFixed(2)}</span>
+                    <div class="flex items-start ${priceChangesAfterInitialTerm ? 'mb-3' : ''}">
+                        <div class="flex-shrink-0 w-3 h-3 mt-1 rounded-full bg-blue-500"></div>
+                        <div class="ml-3 flex-1">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <div class="font-semibold text-blue-700">Membership</div>
+                                    <div class="text-sm text-gray-600">${termInfo}</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="font-bold text-blue-600">${startPrice || 'N/A'}/mo</div>
+                                </div>
+                            </div>
                         </div>
-                        <p class="text-xs text-gray-600 mt-1">Over ${termMonths}-month initial term</p>
                     </div>
                 `;
             }
 
-            // Payment Schedule Section
-            pricingHTML += '<div class="mt-4 pt-4 border-t border-gray-200">';
-            pricingHTML += '<h4 class="text-sm font-semibold text-gray-900 mb-2">Payment Schedule</h4>';
-            pricingHTML += '<div class="space-y-2 text-sm">';
+            // Extension/After Initial Term - ONLY show if price actually changes
+            if (term.extensionType && term.extensionType !== 'NONE' && priceChangesAfterInitialTerm) {
+                hasTimeline = true;
+                const afterTerm = term.termAfterExtension || term.extensionTerm;
+                const afterPriceFormatted = safePriceFormat(afterPrice);
 
-            // Billing Frequency
-            const billingInterval = term.billingInterval || term.paymentInterval || 1;
-            const billingUnit = term.billingIntervalUnit || 'MONTH';
-            pricingHTML += `
-                <div class="flex justify-between">
-                    <span class="text-gray-600">Billing Frequency:</span>
-                    <span class="font-medium">Every ${billingInterval} ${billingUnit.toLowerCase()}${billingInterval > 1 ? 's' : ''}</span>
-                </div>
-            `;
-
-            // Currency
-            pricingHTML += `
-                <div class="flex justify-between">
-                    <span class="text-gray-600">Currency:</span>
-                    <span class="font-medium">${currency}</span>
-                </div>
-            `;
-
-            // First Payment Date
-            if (term.defaultContractStartDate) {
-                const startDate = new Date(term.defaultContractStartDate);
                 pricingHTML += `
-                    <div class="flex justify-between">
-                        <span class="text-gray-600">First Payment:</span>
-                        <span class="font-medium">${startDate.toLocaleDateString()}</span>
-                    </div>
-                `;
-            } else {
-                pricingHTML += `
-                    <div class="flex justify-between">
-                        <span class="text-gray-600">First Payment:</span>
-                        <span class="font-medium">Upon activation</span>
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0 w-3 h-3 mt-1 rounded-full bg-purple-500"></div>
+                        <div class="ml-3 flex-1">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <div class="font-semibold text-purple-700">After Initial Term</div>
+                                    ${afterTerm ? `<div class="text-sm text-gray-600">${afterTerm.value} ${afterTerm.unit.toLowerCase()}${afterTerm.value > 1 ? 's' : ''} auto-renewal</div>` : '<div class="text-sm text-gray-600">Auto-renewing</div>'}
+                                </div>
+                                <div class="text-right">
+                                    ${afterPriceFormatted ? `<div class="font-bold text-purple-600">${afterPriceFormatted}/mo</div>` : ''}
+                                    <div class="text-xs text-amber-600">Price changes</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 `;
             }
 
-            // Payment day of month (if applicable)
-            if (term.paymentDayOfMonth) {
-                pricingHTML += `
-                    <div class="flex justify-between">
-                        <span class="text-gray-600">Payment Day:</span>
-                        <span class="font-medium">Day ${term.paymentDayOfMonth} of each month</span>
-                    </div>
-                `;
+            if (!hasTimeline) {
+                pricingHTML += '<p class="text-sm text-gray-500 italic">Timeline information will be displayed based on your selected offer terms</p>';
             }
 
-            pricingHTML += '</div></div>'; // Close payment schedule section
+            pricingHTML += '</div></div>'; // Close timeline
+
+            // ============================================================
+            // 4. PRICE ADJUSTMENTS & CHANGES
+            // ============================================================
+            if (term.priceAdjustmentRules && term.priceAdjustmentRules.length > 0) {
+                pricingHTML += '<div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">';
+                pricingHTML += '<h4 class="text-md font-semibold text-amber-900 mb-3 flex items-center">';
+                pricingHTML += '<svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>';
+                pricingHTML += 'Price Adjustments';
+                pricingHTML += '</h4>';
+                pricingHTML += '<div class="space-y-2">';
+                term.priceAdjustmentRules.forEach(rule => {
+                    const icon = rule.type === 'RAISE' ? '📈' : rule.type === 'REDUCTION' ? '📉' : '💰';
+                    pricingHTML += `
+                        <div class="flex items-start text-sm">
+                            <span class="mr-2">${icon}</span>
+                            <div class="flex-1">
+                                <div class="font-medium text-amber-900">${rule.defaultDescription || `${rule.value} ${rule.recurrenceFrequency}`}</div>
+                                <div class="text-xs text-amber-700 mt-1">Type: ${rule.type.replace('_', ' ')} • Frequency: ${rule.recurrenceFrequency}</div>
+                            </div>
+                        </div>
+                    `;
+                });
+                pricingHTML += '</div></div>';
+            }
+
         }
 
-        pricingHTML += '</div>';
         pricingEl.innerHTML = pricingHTML;
 
         // Display additional information
@@ -611,7 +725,6 @@ async function initializeOfferDetailsStep() {
                     <div class="p-4 bg-gray-50 rounded-lg">
                         <h4 class="font-semibold text-gray-900 mb-1">${module.name}</h4>
                         <p class="text-sm text-gray-600">${module.description}</p>
-                        ${module.term && module.term.term ? `<p class="text-xs text-gray-500 mt-2">Duration: ${module.term.term.value} ${module.term.term.unit.toLowerCase()}(s)</p>` : ''}
                     </div>
                 `;
             });
@@ -622,63 +735,70 @@ async function initializeOfferDetailsStep() {
             const term = offerDetails.terms[0];
             infoHTML += `
                 <div class="p-4 bg-gray-50 rounded-lg md:col-span-2">
-                    <h4 class="font-semibold text-gray-900 mb-2">Contract Terms</h4>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                    <h4 class="font-semibold text-gray-900 mb-3">Contract Terms</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 text-sm">
             `;
 
+            // Cancellation Period
             if (term.cancelationPeriod) {
                 infoHTML += `
-                    <div>
+                    <div class="flex justify-between">
                         <span class="text-gray-600">Cancellation Period:</span>
-                        <span class="font-medium ml-2">${term.cancelationPeriod.value} ${term.cancelationPeriod.unit.toLowerCase()}(s)</span>
+                        <span class="font-medium">${term.cancelationPeriod.value} ${term.cancelationPeriod.unit.toLowerCase()}${term.cancelationPeriod.value > 1 ? 's' : ''}</span>
                     </div>
                 `;
             }
 
+            // Extension Term
             if (term.extensionTerm) {
                 infoHTML += `
-                    <div>
+                    <div class="flex justify-between">
                         <span class="text-gray-600">Extension Term:</span>
-                        <span class="font-medium ml-2">${term.extensionTerm.value} ${term.extensionTerm.unit.toLowerCase()}(s)</span>
+                        <span class="font-medium">${term.extensionTerm.value} ${term.extensionTerm.unit.toLowerCase()}${term.extensionTerm.value > 1 ? 's' : ''}</span>
                     </div>
                 `;
             }
 
+            // Contract Start Date
             if (term.defaultContractStartDate) {
                 infoHTML += `
-                    <div>
+                    <div class="flex justify-between">
                         <span class="text-gray-600">Contract Start:</span>
-                        <span class="font-medium ml-2">${new Date(term.defaultContractStartDate).toLocaleDateString()}</span>
+                        <span class="font-medium">${new Date(term.defaultContractStartDate).toLocaleDateString()}</span>
                     </div>
                 `;
             }
 
-            // Cancellation Financial Terms
-            if (term.cancellationFee || term.refundPolicy) {
+            // Default Start Date of Use
+            if (term.defaultContractStartDateOfUse && term.defaultContractStartDateOfUse !== term.defaultContractStartDate) {
                 infoHTML += `
-                    <div>
-                        <span class="text-gray-600">Cancellation Fee:</span>
-                        <span class="font-medium ml-2">${term.cancellationFee ? formatCurrency(term.cancellationFee.amount, term.cancellationFee.currency) : 'None'}</span>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Start Date of Use:</span>
+                        <span class="font-medium">${new Date(term.defaultContractStartDateOfUse).toLocaleDateString()}</span>
                     </div>
                 `;
             }
 
-            // Auto-renewal
-            const autoRenewal = term.autoRenewal !== undefined ? term.autoRenewal : true;
-            infoHTML += `
-                <div>
-                    <span class="text-gray-600">Auto-Renewal:</span>
-                    <span class="font-medium ml-2">${autoRenewal ? 'Yes' : 'No'}</span>
-                </div>
-            `;
-
-            // Notice Period for Cancellation
-            if (term.noticePeriod || term.cancelationPeriod) {
-                const noticePeriod = term.noticePeriod || term.cancelationPeriod;
+            // Auto-renewal (derive from extensionType)
+            if (term.extensionType) {
+                const autoRenewal = term.extensionType !== 'NONE';
                 infoHTML += `
-                    <div>
-                        <span class="text-gray-600">Notice Period:</span>
-                        <span class="font-medium ml-2">${noticePeriod.value} ${noticePeriod.unit.toLowerCase()}(s) before end date</span>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Auto-Renewal:</span>
+                        <span class="font-medium">${autoRenewal ? 'Yes' : 'No'}</span>
+                    </div>
+                `;
+            }
+
+            // Cancellation Strategy
+            if (term.cancelationStrategy) {
+                const strategyDisplay = term.cancelationStrategy === 'TERM' ? 'End of term' :
+                                      term.cancelationStrategy === 'RECEIPT_DATE' ? 'Upon receipt' :
+                                      term.cancelationStrategy.replace('_', ' ');
+                infoHTML += `
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Cancellation applies:</span>
+                        <span class="font-medium">${strategyDisplay}</span>
                     </div>
                 `;
             }
@@ -874,6 +994,7 @@ function loadFormData(data) {
 
 let previewData = null;
 let appliedVouchers = [];
+let selectedStartDate = null; // Track the user-selected start date
 
 async function initializePreviewStep() {
     console.log('Initializing Step 4: Preview');
@@ -897,6 +1018,14 @@ async function initializePreviewStep() {
     } else {
         await loadPreview();
     }
+
+    // Setup start date functionality
+    document.getElementById('apply-start-date').addEventListener('click', applyStartDate, { once: false });
+    document.getElementById('contract-start-date').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            applyStartDate();
+        }
+    });
 
     // Setup voucher code functionality
     document.getElementById('apply-voucher').addEventListener('click', applyVoucherCode, { once: false });
@@ -923,7 +1052,7 @@ async function initializePreviewStep() {
     }, { once: true });
 }
 
-async function loadPreview() {
+async function loadPreview(customStartDate = null) {
     const offer = selectedOffer || storage.get(STORAGE_KEYS.FLOW.SELECTED_OFFER);
     const formData = storage.get(STORAGE_KEYS.FLOW.FORM_DATA);
 
@@ -942,13 +1071,19 @@ async function loadPreview() {
             throw new Error('No term ID found for the selected offer');
         }
 
-        // Calculate start date (use default or today + 1 day)
-        let startDate = defaultStartDate;
+        // Calculate start date:
+        // 1. Use customStartDate if provided (user changed it)
+        // 2. Use selectedStartDate if we have one from previous preview (preserves user selection)
+        // 3. Use defaultStartDate from offer term
+        // 4. Fall back to today's date
+        let startDate = customStartDate || selectedStartDate || defaultStartDate;
         if (!startDate) {
-            const tomorrow = new Date();
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            startDate = tomorrow.toISOString().split('T')[0];
+            const today = new Date();
+            startDate = today.toISOString().split('T')[0];
         }
+
+        // Store the selected start date for future use
+        selectedStartDate = startDate;
 
         // Build customer object according to API spec (ALL required fields must be present)
         const customer = {
@@ -1017,6 +1152,15 @@ function renderPreview(preview) {
 
     const offer = selectedOffer || storage.get(STORAGE_KEYS.FLOW.SELECTED_OFFER);
     const formData = storage.get(STORAGE_KEYS.FLOW.FORM_DATA);
+
+    // Set the start date input field with the current start date
+    const startDateInput = document.getElementById('contract-start-date');
+    if (startDateInput && selectedStartDate) {
+        startDateInput.value = selectedStartDate;
+        // Set minimum date to today
+        const today = new Date().toISOString().split('T')[0];
+        startDateInput.min = today;
+    }
 
     // Render contract summary
     const summaryEl = document.getElementById('preview-summary');
@@ -1137,6 +1281,37 @@ async function applyVoucherCode() {
     await loadPreview();
 }
 
+async function applyStartDate() {
+    const startDateInput = document.getElementById('contract-start-date');
+    const newStartDate = startDateInput.value;
+
+    if (!newStartDate) {
+        showNotification('Please select a start date', 'warning');
+        return;
+    }
+
+    // Validate that the date is not in the past
+    const selectedDate = new Date(newStartDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset time to compare dates only
+
+    if (selectedDate < today) {
+        showNotification('Start date cannot be in the past', 'error');
+        return;
+    }
+
+    // Check if the date has actually changed
+    if (newStartDate === selectedStartDate) {
+        showNotification('Start date is already set to this value', 'info');
+        return;
+    }
+
+    // Reload preview with new start date
+    showNotification('Recalculating preview with new start date...', 'info', 2000);
+    await loadPreview(newStartDate);
+    showNotification('Preview updated with new start date', 'success');
+}
+
 // =================================================================
 // PAYMENT WIDGET MANAGEMENT
 // =================================================================
@@ -1177,14 +1352,15 @@ async function createPaymentSession(scope, amount = 0) {
         requestData.permittedPaymentChoices = ['CREDIT_CARD', 'PAYPAL', 'TWINT', 'IDEAL', 'BANCONTACT'];
         console.log('ECOM scope: Using one-time payment methods only');
     } else if (scope === 'MEMBER_ACCOUNT') {
-        // For MEMBER_ACCOUNT scope (recurring payment), use offer's permitted choices or defaults
-        if (offer && offer.permittedPaymentChoices && offer.permittedPaymentChoices.length > 0) {
-            requestData.permittedPaymentChoices = offer.permittedPaymentChoices;
-            console.log('Added permittedPaymentChoices from offer:', offer.permittedPaymentChoices);
+        // For MEMBER_ACCOUNT scope (recurring payment), use ALL payment choices from offer
+        // API field name is 'allowedPaymentChoices' (not 'permittedPaymentChoices')
+        if (offer && offer.allowedPaymentChoices && offer.allowedPaymentChoices.length > 0) {
+            requestData.permittedPaymentChoices = offer.allowedPaymentChoices;
+            console.log('Added permittedPaymentChoices from offer.allowedPaymentChoices:', offer.allowedPaymentChoices);
         } else {
-            console.warn('No permittedPaymentChoices found in offer, using defaults');
-            // Fallback to SEPA and CREDIT_CARD for recurring
-            requestData.permittedPaymentChoices = ['SEPA', 'CREDIT_CARD'];
+            console.warn('No allowedPaymentChoices found in offer, using defaults');
+            // Fallback to common recurring payment methods
+            requestData.permittedPaymentChoices = ['SEPA', 'BACS', 'CREDIT_CARD', 'CASH', 'BANK_TRANSFER'];
         }
     }
 
@@ -1751,13 +1927,12 @@ async function submitContract() {
         // Build contract object
         const termId = offer.terms[0].id;
 
-        // Get startDate from preview, or calculate default (tomorrow)
-        let startDate = preview.contractStartDate;
+        // Get startDate from preview, or use selectedStartDate, or fall back to today
+        let startDate = preview.contractStartDate || selectedStartDate;
         if (!startDate) {
-            const tomorrow = new Date();
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            startDate = tomorrow.toISOString().split('T')[0];
-            console.warn('No contractStartDate in preview, using default:', startDate);
+            const today = new Date();
+            startDate = today.toISOString().split('T')[0];
+            console.warn('No contractStartDate in preview or selectedStartDate, using today:', startDate);
         }
 
         const contract = {
