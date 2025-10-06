@@ -1057,9 +1057,25 @@ async function initializePreviewStep() {
 
     document.getElementById('continue-step-4').addEventListener('click', () => {
         if (previewData) {
-            // Always go to Step 5 (Recurring Payment) next
-            // Step 6 will automatically skip to Step 7 if no upfront payment is needed
-            navigationManager.navigateToStep(5);
+            // Check if entire payment is upfront (skip recurring step if so)
+            const dueOnSigning = previewData.paymentPreview?.dueOnSigningAmount;
+            const totalValue = previewData.contractVolumeInformation?.totalContractVolume;
+
+            // If dueOnSigning equals totalContractVolume, skip to Step 6 (Upfront Payment)
+            // Otherwise, go to Step 5 (Recurring Payment) first
+            const dueAmount = dueOnSigning?.amount || 0;
+            const totalAmount = totalValue?.amount || totalValue || 0;
+
+            if (dueAmount > 0 && dueAmount === totalAmount) {
+                console.log('Full payment upfront, skipping recurring payment step');
+                // Mark that we skipped Step 5 so Step 6 knows
+                storage.set(STORAGE_KEYS.FLOW.SKIPPED_RECURRING, true, DATA_TTL.FLOW);
+                navigationManager.navigateToStep(6);
+            } else {
+                // Clear the skip flag
+                storage.remove(STORAGE_KEYS.FLOW.SKIPPED_RECURRING);
+                navigationManager.navigateToStep(5);
+            }
         }
     }, { once: true });
 }
@@ -1348,11 +1364,16 @@ async function createPaymentSession(scope, amount = 0) {
         referenceText: 'Membership Contract Payment' // Required field
     };
 
-    // Add cached finionPayCustomerId if available
+    // Add cached finionPayCustomerId if available, BUT NOT if we skipped recurring step
+    // (When entire payment is upfront, there's no recurring session to link to)
+    const skippedRecurring = storage.get(STORAGE_KEYS.FLOW.SKIPPED_RECURRING);
     const cachedFinionPayCustomerId = storage.get(STORAGE_KEYS.FLOW.FINION_PAY_CUSTOMER_ID);
-    if (cachedFinionPayCustomerId) {
+
+    if (cachedFinionPayCustomerId && !skippedRecurring) {
         requestData.finionPayCustomerId = cachedFinionPayCustomerId;
         console.log('Using cached finionPayCustomerId:', cachedFinionPayCustomerId);
+    } else if (skippedRecurring) {
+        console.log('Skipped recurring step - not using cached finionPayCustomerId');
     }
 
     // Add permittedPaymentChoices based on scope
@@ -1636,9 +1657,10 @@ async function initializeUpfrontPaymentStep() {
     // Display amount
     document.getElementById('upfront-amount').textContent = formatCurrencyDecimal(amount, currency);
 
-    // Setup back button
+    // Setup back button - go to Step 4 if we skipped Step 5, otherwise Step 5
+    const skippedRecurring = storage.get(STORAGE_KEYS.FLOW.SKIPPED_RECURRING);
     document.getElementById('back-step-6').addEventListener('click', () => {
-        navigationManager.navigateToStep(5);
+        navigationManager.navigateToStep(skippedRecurring ? 4 : 5);
     }, { once: true });
 
     // Load payment widget
