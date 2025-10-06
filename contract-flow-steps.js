@@ -145,7 +145,10 @@ class NavigationManager {
     }
 
     async navigateForward(targetStep) {
-        if (targetStep > this.currentStep + 1) {
+        // Allow skipping Step 5 when full payment is upfront (Step 4 -> Step 6)
+        const skippingRecurring = this.currentStep === 4 && targetStep === 6 && storage.get(STORAGE_KEYS.FLOW.SKIPPED_RECURRING);
+
+        if (targetStep > this.currentStep + 1 && !skippingRecurring) {
             showError('Please complete the current step before proceeding.');
             return;
         }
