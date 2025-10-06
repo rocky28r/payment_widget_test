@@ -1008,7 +1008,7 @@ function loadFormData(data) {
 // =================================================================
 
 let previewData = null;
-let appliedVouchers = [];
+let appliedVoucher = null; // Only one voucher can be applied
 let selectedStartDate = null; // Track the user-selected start date
 
 async function initializePreviewStep() {
@@ -1028,7 +1028,7 @@ async function initializePreviewStep() {
     const savedPreview = storage.get(STORAGE_KEYS.FLOW.PREVIEW_DATA);
     if (savedPreview) {
         previewData = savedPreview;
-        appliedVouchers = savedPreview.voucherCodes || [];
+        appliedVoucher = savedPreview.appliedVoucher || null;
         renderPreview(previewData);
     } else {
         await loadPreview();
@@ -1139,9 +1139,9 @@ async function loadPreview(customStartDate = null) {
             startDate: startDate
         };
 
-        // Add voucher code if exists
-        if (appliedVouchers.length > 0) {
-            contract.voucherCode = appliedVouchers[0]; // API accepts single voucher code as string
+        // Add voucher code if exists (only one voucher allowed)
+        if (appliedVoucher) {
+            contract.voucherCode = appliedVoucher;
         }
 
         // Call preview API with correct structure
@@ -1156,7 +1156,21 @@ async function loadPreview(customStartDate = null) {
 
         console.log('Preview API response:', JSON.stringify(previewData, null, 2));
 
-        // Store preview data
+        // Check voucher validation result
+        if (previewData.voucherSuccessMessage && !previewData.voucherErrorCode) {
+            // Voucher was successfully applied
+            console.log('Voucher successfully applied:', previewData.voucherSuccessMessage);
+            showNotification(previewData.voucherSuccessMessage, 'success');
+        } else if (previewData.voucherErrorCode) {
+            // Voucher failed validation
+            console.log('Voucher validation failed:', previewData.voucherErrorCode);
+            showNotification('Invalid voucher code', 'error');
+            // Clear the voucher since it was rejected
+            appliedVoucher = null;
+        }
+
+        // Store preview data with applied voucher status
+        previewData.appliedVoucher = appliedVoucher;
         storage.set(STORAGE_KEYS.FLOW.PREVIEW_DATA, previewData, DATA_TTL.PREVIEW);
 
         // Render preview
@@ -1275,18 +1289,30 @@ function renderPreview(preview) {
 
     paymentEl.innerHTML = paymentHTML;
 
-    // Show applied vouchers if any
-    if (appliedVouchers.length > 0) {
-        const voucherStatus = document.getElementById('voucher-status');
+    // Show applied voucher if successfully validated
+    const voucherStatus = document.getElementById('voucher-status');
+    if (appliedVoucher && preview.voucherSuccessMessage && !preview.voucherErrorCode) {
         voucherStatus.innerHTML = `
-            <div class="flex items-center text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2">
-                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                </svg>
-                <span>Voucher applied: ${appliedVouchers.join(', ')}</span>
+            <div class="flex items-center justify-between text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2">
+                <div class="flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                    </svg>
+                    <div>
+                        <span class="font-medium">Voucher applied: ${appliedVoucher}</span>
+                        ${preview.voucherSuccessMessage ? `<div class="text-sm">${preview.voucherSuccessMessage}</div>` : ''}
+                    </div>
+                </div>
+                <button onclick="removeVoucher()" class="ml-3 text-green-600 hover:text-green-800">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                    </svg>
+                </button>
             </div>
         `;
         voucherStatus.classList.remove('hidden');
+    } else {
+        voucherStatus.classList.add('hidden');
     }
 }
 
@@ -1299,17 +1325,34 @@ async function applyVoucherCode() {
         return;
     }
 
-    if (appliedVouchers.includes(voucherCode)) {
+    if (appliedVoucher) {
+        showNotification('Only one voucher can be applied. Please remove the current voucher first.', 'warning');
+        return;
+    }
+
+    if (appliedVoucher === voucherCode) {
         showNotification('This voucher has already been applied', 'info');
         return;
     }
 
-    // Add voucher and reload preview
-    appliedVouchers.push(voucherCode);
+    // Set voucher and reload preview to validate it
+    appliedVoucher = voucherCode;
     voucherInput.value = '';
-    showNotification('Applying voucher...', 'info', 2000);
+    showNotification('Validating voucher code...', 'info', 2000);
 
     await loadPreview();
+}
+
+async function removeVoucher() {
+    if (!appliedVoucher) return;
+
+    // Clear the voucher
+    appliedVoucher = null;
+    showNotification('Removing voucher...', 'info', 2000);
+
+    // Reload preview without voucher
+    await loadPreview();
+    showNotification('Voucher removed', 'success');
 }
 
 async function applyStartDate() {
@@ -1948,7 +1991,7 @@ async function submitContract() {
         const formData = storage.get(STORAGE_KEYS.FLOW.FORM_DATA);
         const preview = storage.get(STORAGE_KEYS.FLOW.PREVIEW_DATA);
         const tokens = storage.get(STORAGE_KEYS.FLOW.TOKENS);
-        const vouchers = appliedVouchers.length > 0 ? appliedVouchers : undefined;
+        // Voucher is a single code, not an array
 
         // Build customer object
         const customer = {
@@ -1987,7 +2030,7 @@ async function submitContract() {
         const contract = {
             contractOfferTermId: termId,
             startDate: startDate,
-            voucherCode: vouchers ? vouchers[0] : undefined
+            voucherCode: appliedVoucher || undefined
         };
 
         // Build signup request
