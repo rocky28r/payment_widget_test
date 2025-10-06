@@ -495,11 +495,15 @@ async function initializeOfferDetailsStep() {
         if (offerDetails.terms && offerDetails.terms.length > 0) {
             const term = offerDetails.terms[0]; // Use first term
 
-            // Get monthly price from correct location (paymentFrequency.price or fallback to rateStartPrice)
+            // Get monthly price from correct location (paymentFrequency.price or fallback to rateStartPrice or termsToPrices)
             const getTermPrice = () => {
                 // Try paymentFrequency.price first (primary location)
                 if (term.paymentFrequency?.price) {
                     return term.paymentFrequency.price;
+                }
+                // Check termsToPrices for TERM_BASED pricing (e.g., prepaid offers)
+                if (term.paymentFrequency?.termsToPrices && term.paymentFrequency.termsToPrices.length > 0) {
+                    return term.paymentFrequency.termsToPrices[0].price;
                 }
                 // Fallback to rateStartPrice (legacy field)
                 if (term.rateStartPrice) {
@@ -530,12 +534,17 @@ async function initializeOfferDetailsStep() {
             if (termPrice) {
                 const formattedPrice = safePriceFormat(termPrice);
                 if (formattedPrice) {
+                    // Determine if this is a recurring or one-time payment
+                    const isRecurring = term.paymentFrequency?.recurring !== false;
+                    const paymentFrequencyLabel = isRecurring ? 'per month' : 'one-time';
+                    const priceLabel = isRecurring ? 'Starting at' : 'Total Price';
+
                     pricingHTML += `
                         <div class="flex justify-between items-baseline">
-                            <span class="text-sm opacity-90">Starting at</span>
+                            <span class="text-sm opacity-90">${priceLabel}</span>
                             <div class="text-right">
                                 <div class="text-4xl font-bold">${formattedPrice}</div>
-                                <div class="text-sm opacity-75">per month</div>
+                                <div class="text-sm opacity-75">${paymentFrequencyLabel}</div>
                             </div>
                         </div>
                     `;
@@ -547,8 +556,8 @@ async function initializeOfferDetailsStep() {
             let hasOneTimeFees = false;
             if (term.flatFees && term.flatFees.length > 0) {
                 term.flatFees.forEach(fee => {
-                    if (fee.starterPackage && fee.price?.amount) {
-                        oneTimeFeesTotal += fee.price.amount;
+                    if (fee.starterPackage && fee.paymentFrequency?.price?.amount) {
+                        oneTimeFeesTotal += fee.paymentFrequency.price.amount;
                         hasOneTimeFees = true;
                     }
                 });
@@ -626,6 +635,9 @@ async function initializeOfferDetailsStep() {
             if (termPrice) {
                 hasTimeline = true;
                 const startPrice = safePriceFormat(termPrice);
+                const isRecurring = term.paymentFrequency?.recurring !== false;
+                const priceFrequency = isRecurring ? '/mo' : '';
+
                 // Try to get term info from cancellation period or extension term
                 let termInfo = '';
                 if (term.cancelationPeriod) {
@@ -633,7 +645,7 @@ async function initializeOfferDetailsStep() {
                 } else if (term.extensionTerm) {
                     termInfo = `${term.extensionTerm.value} ${term.extensionTerm.unit.toLowerCase()}${term.extensionTerm.value > 1 ? 's' : ''} renewal term`;
                 } else {
-                    termInfo = 'Ongoing membership';
+                    termInfo = isRecurring ? 'Ongoing membership' : 'One-time payment';
                 }
 
                 pricingHTML += `
@@ -646,7 +658,7 @@ async function initializeOfferDetailsStep() {
                                     <div class="text-sm text-gray-600">${termInfo}</div>
                                 </div>
                                 <div class="text-right">
-                                    <div class="font-bold text-blue-600">${startPrice || 'N/A'}/mo</div>
+                                    <div class="font-bold text-blue-600">${startPrice || 'N/A'}${priceFrequency}</div>
                                 </div>
                             </div>
                         </div>
