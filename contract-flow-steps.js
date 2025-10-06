@@ -1761,8 +1761,15 @@ async function initializeConfirmationStep() {
     const formData = storage.get(STORAGE_KEYS.FLOW.FORM_DATA);
     const preview = storage.get(STORAGE_KEYS.FLOW.PREVIEW_DATA);
     const tokens = storage.get(STORAGE_KEYS.FLOW.TOKENS);
+    const skippedRecurring = storage.get(STORAGE_KEYS.FLOW.SKIPPED_RECURRING);
 
-    if (!offer || !formData || !preview || !tokens || !tokens.recurring) {
+    // For skipped recurring: only validate upfront token
+    // For normal flow: validate recurring token (upfront is optional in some offers)
+    const hasRequiredTokens = skippedRecurring
+        ? (tokens && tokens.upfront)
+        : (tokens && tokens.recurring);
+
+    if (!offer || !formData || !preview || !hasRequiredTokens) {
         showNotification('Missing required data. Please complete all previous steps.', 'error');
         navigationManager.navigateToStep(1);
         return;
@@ -1957,9 +1964,14 @@ async function submitContract() {
             language: {
                 languageCode: storage.get(STORAGE_KEYS.CONFIG.LOCALE)?.split('-')[0] || 'en',
                 countryCode: formData['address.country']
-            },
-            paymentRequestToken: tokens.recurring.token // REQUIRED for recurring payment
+            }
         };
+
+        // Add recurring payment token only if it exists (not skipped)
+        if (tokens.recurring) {
+            customer.paymentRequestToken = tokens.recurring.token;
+            console.log('Added recurring paymentRequestToken to customer');
+        }
 
         // Build contract object
         const termId = offer.terms[0].id;
