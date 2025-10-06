@@ -116,15 +116,15 @@ class Navigation {
 
                                 <div>
                                     <label for="globalApiBaseUrl" class="block text-sm font-medium text-gray-700 mb-2">
-                                        API Base URL
+                                        API Base URL <span class="text-red-500">*</span>
                                     </label>
                                     <input
                                         type="url"
                                         id="globalApiBaseUrl"
-                                        placeholder="${API_CONFIG.baseUrl}"
+                                        placeholder="Enter API base URL"
+                                        required
                                         class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                                     >
-                                    <p class="mt-1 text-xs text-gray-500">Leave empty to use default: ${API_CONFIG.baseUrl}</p>
                                 </div>
                             </div>
                         </div>
@@ -235,8 +235,8 @@ class GlobalConfig {
             apiKeyField.value = config.apiKey;
         }
 
-        if (apiBaseUrlField) {
-            apiBaseUrlField.value = config.apiBaseUrl || API_CONFIG.baseUrl;
+        if (apiBaseUrlField && config.apiBaseUrl) {
+            apiBaseUrlField.value = config.apiBaseUrl;
         }
 
         // Trigger change events to update any dependent logic
@@ -244,9 +244,8 @@ class GlobalConfig {
         if (apiBaseUrlField) apiBaseUrlField.dispatchEvent(new Event('input'));
 
         // Sync to contract flow page APIClient if available
-        if (typeof apiClient !== 'undefined' && config.apiKey) {
-            const baseUrl = config.apiBaseUrl || API_CONFIG.baseUrl;
-            apiClient.configure(baseUrl, config.apiKey);
+        if (typeof apiClient !== 'undefined' && config.apiKey && config.apiBaseUrl) {
+            apiClient.configure(config.apiBaseUrl, config.apiKey);
             console.log('✓ APIClient configured with global settings');
         }
     }

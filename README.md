@@ -272,3 +272,13 @@ For technical support or questions about the Payment Widget Test Suite:
 ---
 
 **Note**: This is a testing tool for development purposes. Ensure proper security measures are in place before using in production environments.
+
+## 🔄 Recent Changes
+
+### Global API Configuration (Latest)
+- **Centralized Credentials**: API key and base URL are now managed globally via the "Config" button in the navigation bar
+- **Cross-Page Sync**: Configuration automatically syncs between Payment Widget Test and Contract Flow pages
+- **Removed Local Storage**: API credentials are no longer stored in page-specific local storage for improved security
+- **Migration**: Old API credentials are automatically cleaned up from local storage on page load
+- **Required Fields**: Both API Key and Base URL are now required fields in the global configuration
+- **No Default URL**: The API Base URL no longer has a default value and must be explicitly set

@@ -2076,17 +2076,22 @@ function initializeContractFlow() {
 }
 
 function loadConfiguration() {
-    // Load from storage
-    const apiKey = storage.get(STORAGE_KEYS.CONFIG.API_KEY);
-    const baseUrl = storage.get(STORAGE_KEYS.CONFIG.API_BASE_URL);
+    // Clear old API credential storage keys (migration)
+    storage.remove(STORAGE_KEYS.CONFIG.API_KEY);
+    storage.remove(STORAGE_KEYS.CONFIG.API_BASE_URL);
 
-    if (apiKey && baseUrl) {
-        apiClient.configure(baseUrl, apiKey);
+    // Load API credentials from global config ONLY
+    const globalConfig = GlobalConfig.load();
+
+    if (globalConfig.apiKey && globalConfig.apiBaseUrl) {
+        apiClient.configure(globalConfig.apiBaseUrl, globalConfig.apiKey);
+        document.getElementById('apiKey').value = globalConfig.apiKey;
+        document.getElementById('apiBaseUrl').value = globalConfig.apiBaseUrl;
+    } else {
+        console.warn('Global API configuration not found. Please set it via the Config button in the navigation bar.');
     }
 
-    // Load UI config
-    document.getElementById('apiKey').value = apiKey || '';
-    document.getElementById('apiBaseUrl').value = baseUrl || '';
+    // Load UI config from local storage
     document.getElementById('environment').value = storage.get(STORAGE_KEYS.CONFIG.ENVIRONMENT) || 'sandbox';
     document.getElementById('countryCode').value = storage.get(STORAGE_KEYS.CONFIG.COUNTRY_CODE) || 'DE';
     document.getElementById('currency').value = storage.get(STORAGE_KEYS.CONFIG.CURRENCY) || 'EUR';
@@ -2122,26 +2127,20 @@ function setupConfigPanel() {
 
     // Save configuration
     document.getElementById('save-config').addEventListener('click', () => {
-        const apiKey = document.getElementById('apiKey').value;
-        const baseUrl = document.getElementById('apiBaseUrl').value;
-
-        if (!apiKey || !baseUrl) {
-            showError('Please provide API key and base URL');
+        // API credentials come from global config only - verify they exist
+        const globalConfig = GlobalConfig.load();
+        if (!globalConfig.apiKey || !globalConfig.apiBaseUrl) {
+            showError('Please set API credentials via the Config button in the navigation bar');
             return;
         }
 
-        // Save to storage
-        storage.set(STORAGE_KEYS.CONFIG.API_KEY, apiKey, DATA_TTL.CONFIG);
-        storage.set(STORAGE_KEYS.CONFIG.API_BASE_URL, baseUrl, DATA_TTL.CONFIG);
+        // Save UI config to local storage (not API credentials)
         storage.set(STORAGE_KEYS.CONFIG.ENVIRONMENT, document.getElementById('environment').value, DATA_TTL.CONFIG);
         storage.set(STORAGE_KEYS.CONFIG.COUNTRY_CODE, document.getElementById('countryCode').value, DATA_TTL.CONFIG);
         storage.set(STORAGE_KEYS.CONFIG.CURRENCY, document.getElementById('currency').value, DATA_TTL.CONFIG);
         storage.set(STORAGE_KEYS.CONFIG.LOCALE, document.getElementById('locale').value, DATA_TTL.CONFIG);
         storage.set(STORAGE_KEYS.CONFIG.USE_RUBIKS_UI, document.getElementById('useRubiksUI').checked, DATA_TTL.CONFIG);
         storage.set(STORAGE_KEYS.CONFIG.REQUIRE_DD_SIG, document.getElementById('requireDirectDebitSignature').checked, DATA_TTL.CONFIG);
-
-        // Configure API client
-        apiClient.configure(baseUrl, apiKey);
 
         showSuccess('Configuration saved');
 

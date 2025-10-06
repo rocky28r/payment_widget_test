@@ -488,13 +488,9 @@
         // Initialize navigation for this page
         Navigation.init('payment-test');
 
-        // Load global config into hidden fields
+        // Load global config into fields
         window.addEventListener('DOMContentLoaded', () => {
-            const globalConfig = GlobalConfig.load();
-            if (globalConfig) {
-                document.getElementById('apiKey').value = globalConfig.apiKey || '';
-                document.getElementById('apiBaseUrl').value = globalConfig.baseUrl || '';
-            }
+            GlobalConfig.initialize();
         });
     </script>
     <script src="script.js"></script>

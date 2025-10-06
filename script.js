@@ -217,10 +217,8 @@ function saveToLocalStorage() {
         const formData = {
             version: STORAGE_VERSION,
             timestamp: new Date().toISOString(),
-            // API Configuration
-            apiKey: document.getElementById('apiKey').value,
-            apiBaseUrl: document.getElementById('apiBaseUrl').value,
-            
+            // Note: API Key and Base URL are managed by GlobalConfig, not stored here
+
             // Session Parameters
             sessionAmount: document.getElementById('sessionAmount').value,
             scope: document.getElementById('scope').value,
@@ -274,19 +272,25 @@ function loadFromLocalStorage() {
     try {
         const saved = localStorage.getItem(STORAGE_KEY);
         if (!saved) return false;
-        
+
         const formData = JSON.parse(saved);
-        
+
         // Check version compatibility
         if (formData.version !== STORAGE_VERSION) {
             logStatus('Stored data version mismatch, skipping restore', 'warn');
             return false;
         }
-        
-        // Restore API Configuration
-        if (formData.apiKey) document.getElementById('apiKey').value = formData.apiKey;
-        if (formData.apiBaseUrl) document.getElementById('apiBaseUrl').value = formData.apiBaseUrl;
-        
+
+        // Migration: Remove old API credentials from stored data
+        if (formData.apiKey || formData.apiBaseUrl) {
+            delete formData.apiKey;
+            delete formData.apiBaseUrl;
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(formData));
+            console.log('Migrated: Removed API credentials from local storage');
+        }
+
+        // Note: API Configuration is loaded from GlobalConfig, not from local storage
+
         // Restore Session Parameters
         if (formData.sessionAmount) document.getElementById('sessionAmount').value = formData.sessionAmount;
         if (formData.scope) document.getElementById('scope').value = formData.scope;
