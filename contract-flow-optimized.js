@@ -137,7 +137,9 @@ class StateManager {
             payment: {
                 method: null,
                 recurringToken: null,
-                upfrontToken: null
+                upfrontToken: null,
+                skippedRecurring: false,
+                skippedUpfront: false
             },
             signatures: {
                 contractSignature: null,
@@ -1478,8 +1480,7 @@ class ScreenBController {
             e.preventDefault();
             if (this.validateForm()) {
                 this.saveFormData();
-                navigationController.goToScreen('C');
-                screenCController.init();
+                this.handlePaymentNavigation();
             }
         });
 
@@ -1595,6 +1596,99 @@ class ScreenBController {
                 voucherCode: document.getElementById('voucherCode').value || null
             }
         });
+    }
+
+    /**
+     * Handle navigation to payment screen with conditional step skipping
+     * Based on payment preview data, determines which payment steps are needed
+     */
+    handlePaymentNavigation() {
+        const preview = stateManager.state.preview;
+        if (!preview || !preview.paymentPreview) {
+            // No preview available, go to payment screen (it will handle errors)
+            navigationController.goToScreen('C');
+            screenCController.init();
+            return;
+        }
+
+        const dueOnSigning = preview.paymentPreview.dueOnSigningAmount;
+        const totalValue = preview.contractVolumeInformation?.totalContractVolume;
+        const paymentSchedule = preview.paymentPreview.paymentSchedule || [];
+
+        // Extract amounts
+        const dueAmount = typeof dueOnSigning === 'object' ? (dueOnSigning.amount || 0) : (dueOnSigning || 0);
+        const totalAmount = typeof totalValue === 'object' ? (totalValue.amount || totalValue || 0) : (totalValue || 0);
+
+        // Determine payment scenarios
+        const hasRecurring = paymentSchedule.length > 0 && paymentSchedule.some(p => p.amount > 0);
+        const hasUpfront = dueAmount > 0;
+        const isFullPaymentUpfront = hasUpfront && dueAmount === totalAmount;
+
+        console.log('Payment navigation check:', {
+            dueAmount,
+            totalAmount,
+            hasRecurring,
+            hasUpfront,
+            isFullPaymentUpfront,
+            scheduleLength: paymentSchedule.length
+        });
+
+        // Scenario 1: No payments needed at all (edge case, shouldn't happen)
+        if (!hasRecurring && !hasUpfront) {
+            console.log('No payments needed, skipping to review');
+            stateManager.update({
+                payment: {
+                    ...stateManager.state.payment,
+                    skippedRecurring: true,
+                    skippedUpfront: true
+                }
+            });
+            navigationController.goToScreen('D');
+            screenDController.init();
+            return;
+        }
+
+        // Scenario 2: Full payment upfront (skip recurring, show only upfront)
+        if (isFullPaymentUpfront) {
+            console.log('Full payment upfront, skipping recurring step');
+            stateManager.update({
+                payment: {
+                    ...stateManager.state.payment,
+                    skippedRecurring: true,
+                    skippedUpfront: false
+                }
+            });
+            navigationController.goToScreen('C');
+            screenCController.init();
+            return;
+        }
+
+        // Scenario 3: No upfront payment (show only recurring)
+        if (!hasUpfront && hasRecurring) {
+            console.log('No upfront payment, only recurring');
+            stateManager.update({
+                payment: {
+                    ...stateManager.state.payment,
+                    skippedRecurring: false,
+                    skippedUpfront: true
+                }
+            });
+            navigationController.goToScreen('C');
+            screenCController.init();
+            return;
+        }
+
+        // Scenario 4: Both payments needed (default)
+        console.log('Both recurring and upfront payments needed');
+        stateManager.update({
+            payment: {
+                ...stateManager.state.payment,
+                skippedRecurring: false,
+                skippedUpfront: false
+            }
+        });
+        navigationController.goToScreen('C');
+        screenCController.init();
     }
 
     async applyVoucher() {
@@ -1979,6 +2073,37 @@ class ScreenCController {
     async init() {
         this.updateOrderSummary();
         this.attachEventListeners();
+
+        const state = stateManager.state;
+        const skippedRecurring = state.payment.skippedRecurring;
+        const skippedUpfront = state.payment.skippedUpfront;
+
+        console.log('ScreenC init:', { skippedRecurring, skippedUpfront });
+
+        // If both skipped (shouldn't reach here), go to review
+        if (skippedRecurring && skippedUpfront) {
+            console.log('Both payments skipped, navigating to review');
+            navigationController.goToScreen('D');
+            screenDController.init();
+            return;
+        }
+
+        // If recurring is skipped, jump directly to upfront payment
+        if (skippedRecurring) {
+            console.log('Recurring payment skipped, showing only upfront payment');
+            Utils.hide('recurring-payment-section');
+            Utils.show('upfront-payment-section');
+
+            const preview = state.preview;
+            const dueOnSigningObj = preview?.paymentPreview?.dueOnSigningAmount;
+            const dueAmount = typeof dueOnSigningObj === 'object' ? (dueOnSigningObj.amount || 0) : (dueOnSigningObj || 0);
+            const currency = typeof dueOnSigningObj === 'object' ? (dueOnSigningObj.currency || 'EUR') : 'EUR';
+
+            await this.loadUpfrontPaymentWidget(dueAmount, currency);
+            return;
+        }
+
+        // Default: load recurring payment widget first
         await this.loadRecurringPaymentWidget();
     }
 
@@ -2068,18 +2193,28 @@ class ScreenCController {
         Utils.show('recurring-payment-success');
         Utils.show('recurring-status-badge');
 
-        // Check if upfront payment is needed
-        const preview = stateManager.state.preview;
-        const dueOnSigningObj = preview?.paymentPreview?.dueOnSigningAmount;
-        const dueAmount = dueOnSigningObj?.amount || dueOnSigningObj || 0;
+        // Check if upfront payment is needed (or skipped)
+        const state = stateManager.state;
+        const skippedUpfront = state.payment.skippedUpfront;
 
-        if (dueAmount > 0) {
-            // Show upfront payment section and load widget
-            Utils.show('upfront-payment-section');
-            this.loadUpfrontPaymentWidget(dueAmount, dueOnSigningObj?.currency || 'EUR');
-        } else {
+        if (skippedUpfront) {
             // No upfront payment needed, enable continue button
+            console.log('Upfront payment skipped, enabling continue button');
             document.getElementById('continue-screen-C').disabled = false;
+        } else {
+            const preview = state.preview;
+            const dueOnSigningObj = preview?.paymentPreview?.dueOnSigningAmount;
+            const dueAmount = typeof dueOnSigningObj === 'object' ? (dueOnSigningObj.amount || 0) : (dueOnSigningObj || 0);
+            const currency = typeof dueOnSigningObj === 'object' ? (dueOnSigningObj.currency || 'EUR') : 'EUR';
+
+            if (dueAmount > 0) {
+                // Show upfront payment section and load widget
+                Utils.show('upfront-payment-section');
+                this.loadUpfrontPaymentWidget(dueAmount, currency);
+            } else {
+                // No upfront payment needed, enable continue button
+                document.getElementById('continue-screen-C').disabled = false;
+            }
         }
     }
 

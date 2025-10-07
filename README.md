@@ -365,6 +365,15 @@ contract-flow-optimized.js      # Complete application logic
 - Updates with age discounts and vouchers
 - Skeleton loader during preview loading
 
+**Smart Payment Step Skipping**
+- Automatically detects payment scenarios and skips unnecessary steps
+- **No payments needed**: Skips directly to review (edge case)
+- **Full payment upfront**: Skips recurring payment setup, shows only upfront payment
+- **No upfront payment**: Skips upfront step, shows only recurring payment setup
+- **Both payments needed**: Shows both steps in sequence (default)
+- Logic mirrors the original contract flow implementation
+- Improves UX by reducing unnecessary steps based on offer configuration
+
 **Validation**
 - Real-time inline validation on blur
 - Email format checking
@@ -386,7 +395,7 @@ contract-flow-optimized.js      # Complete application logic
 - ✅ **50% fewer steps**: 7 → 4 screens reduces abandonment
 - ✅ **Price transparency**: Users see costs immediately on offer cards
 - ✅ **Live updates**: Preview API shows real pricing as users fill forms
-- ✅ **Single payment**: No confusion about separate recurring/upfront steps
+- ✅ **Smart payment skipping**: Automatically skips unnecessary payment steps based on offer
 - ✅ **Better mobile UX**: Optimized layouts for small screens
 - ✅ **Smart defaults**: Less manual input required
 - ✅ **Error prevention**: Inline validation catches issues early
