@@ -8,7 +8,8 @@ class Navigation {
         this.currentPage = currentPage;
         this.routes = [
             { path: 'index.html', label: 'Payment Widget Test', id: 'payment-test' },
-            { path: 'contract-flow.html', label: 'Contract Flow', id: 'contract-flow' }
+            { path: 'contract-flow.html', label: 'Contract Flow', id: 'contract-flow' },
+            { path: 'contract-flow-optimized.html', label: 'Contract Flow (Experimental)', id: 'contract-flow-optimized' }
         ];
     }
 

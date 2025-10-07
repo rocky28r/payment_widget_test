@@ -1,0 +1,46 @@
+# Implementation and Test Documentation
+COMPREHENSIVE_TEST_RESULTS.md
+GLOBAL_CONFIG_FIX.md
+IMPLEMENTATION_PLAN.md
+IMPLEMENTATION_SUMMARY.md
+TESTING_RESULTS.md
+
+# Optimized/Temporary Files
+contract-flow-optimized.html
+contract-flow-optimized.js
+
+# Playwright MCP Data
+.playwright-mcp/
+
+# Environment Variables & Secrets
+.env
+.env.local
+.env.*.local
+*.key
+
+# IDE & Editor Files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Node Modules (if project adds npm in future)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# Logs
+logs/
+*.log
+
+# OS Files
+Thumbs.db
+desktop.ini
+
+# Backup Files
+*.bak
+*.backup

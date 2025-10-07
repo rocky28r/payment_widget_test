@@ -7,7 +7,11 @@ const API_CONFIG = {
 
     // API endpoints
     endpoints: {
-        userSession: '/v1/payments/user-session'
+        userSession: '/v1/payments/user-session',
+        membershipOffers: '/v1/memberships/membership-offers',
+        membershipOfferDetail: '/v1/memberships/membership-offers/:id',
+        signupPreview: '/v1/memberships/signup/preview',
+        signup: '/v1/memberships/signup'
     },
 
     // Request configuration
@@ -16,8 +20,13 @@ const API_CONFIG = {
     },
 
     // Get full URL for an endpoint
-    getUrl(endpoint) {
-        return `${this.baseUrl}${this.endpoints[endpoint]}`;
+    getUrl(endpoint, params = {}) {
+        let url = `${this.baseUrl}${this.endpoints[endpoint]}`;
+        // Replace path parameters like :id
+        Object.keys(params).forEach(key => {
+            url = url.replace(`:${key}`, params[key]);
+        });
+        return url;
     },
 
     // Get headers with API key
