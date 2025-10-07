@@ -5,10 +5,6 @@ IMPLEMENTATION_PLAN.md
 IMPLEMENTATION_SUMMARY.md
 TESTING_RESULTS.md
 
-# Optimized/Temporary Files
-contract-flow-optimized.html
-contract-flow-optimized.js
-
 # Playwright MCP Data
 .playwright-mcp/
 
