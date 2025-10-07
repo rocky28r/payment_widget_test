@@ -1398,7 +1398,7 @@ let paymentWidgetInstances = {
 /**
  * Create a payment session via API
  * @param {string} scope - MEMBER_ACCOUNT or ECOM
- * @param {number} amount - Amount in cents (0 for recurring payment setup)
+ * @param {number} amount - Amount in decimal format (e.g., 10.00 for €10, or 0 for recurring payment setup)
  * @returns {Promise<string>} userSessionToken
  */
 async function createPaymentSession(scope, amount = 0) {
@@ -1729,7 +1729,8 @@ async function loadUpfrontPaymentWidget(amount) {
     navigationEl.classList.add('hidden');
 
     try {
-        // Create payment session (scope: ECOM, amount: upfront amount)
+        // Create payment session (scope: ECOM, amount: upfront amount in decimal format)
+        // API expects decimal amounts (e.g., 10.50 for €10.50)
         const userSessionToken = await createPaymentSession('ECOM', amount);
 
         // Hide loading, show container
