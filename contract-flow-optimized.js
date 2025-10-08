@@ -2524,6 +2524,17 @@ class ScreenCController {
 
         console.log('Remounting upfront payment widget with saved session...');
 
+        // If recurring payment was already completed, show it in completed state
+        if (state.payment.recurringToken) {
+            console.log('Recurring payment already completed, showing success state');
+            Utils.show('recurring-payment-section');
+            Utils.hide('recurring-payment-loading');
+            Utils.hide('recurring-payment-error');
+            Utils.show('recurring-payment-success');
+            Utils.show('recurring-status-badge');
+            Utils.hide('recurring-payment-container'); // Hide the widget container itself
+        }
+
         // Get amount and currency from preview
         const preview = state.preview;
         const dueOnSigningObj = preview?.paymentPreview?.dueOnSigningAmount;
