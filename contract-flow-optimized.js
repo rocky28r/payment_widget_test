@@ -2602,14 +2602,6 @@ class ScreenCController {
     async remountUpfrontWidget() {
         const state = stateManager.state;
 
-        if (!state.payment.sessionToken) {
-            console.error('No session token found for remounting upfront widget');
-            this.showUpfrontPaymentError('Session expired. Please try again.');
-            return;
-        }
-
-        console.log('Remounting upfront payment widget with saved session...');
-
         // If recurring payment was already completed, show it in completed state
         if (state.payment.recurringToken) {
             console.log('Recurring payment already completed, showing success state');
@@ -2620,6 +2612,27 @@ class ScreenCController {
             Utils.show('recurring-status-badge');
             Utils.hide('recurring-payment-container'); // Hide the widget container itself
         }
+
+        // Check if upfront payment was already completed
+        if (state.payment.upfrontToken) {
+            console.log('Upfront payment already completed, showing success state and enabling continue button');
+            Utils.show('upfront-payment-section');
+            Utils.hide('upfront-payment-loading');
+            Utils.hide('upfront-payment-error');
+            Utils.hide('upfront-payment-container');
+            Utils.show('upfront-payment-success');
+            Utils.show('upfront-status-badge');
+            document.getElementById('continue-screen-C').disabled = false;
+            return;
+        }
+
+        if (!state.payment.sessionToken) {
+            console.error('No session token found for remounting upfront widget');
+            this.showUpfrontPaymentError('Session expired. Please try again.');
+            return;
+        }
+
+        console.log('Remounting upfront payment widget with saved session...');
 
         // Get amount and currency from preview
         const preview = state.preview;
@@ -3004,6 +3017,10 @@ function handleURLRestore(screen, paymentStep) {
 
         case 'C':
             if (state.selectedOffer && state.preview) {
+                // Always attach event listeners first
+                screenCController.attachEventListeners();
+                screenCController.updateOrderSummary();
+
                 // Restore payment screen
                 if (paymentStep === 'upfront' && state.payment.activePaymentStep === 'upfront') {
                     // User was on upfront payment, remount it
