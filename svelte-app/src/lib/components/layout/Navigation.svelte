@@ -4,7 +4,8 @@
 	export let showConfigModal = () => {};
 
 	const routes = [
-		{ path: '/', label: 'Payment Widget Test', id: 'payment-test' }
+		{ path: '/', label: 'Payment Widget Test', id: 'payment-test' },
+		{ path: '/contract-flow', label: 'Contract Flow', id: 'contract-flow' }
 	];
 
 	$: currentPath = $page.url.pathname;
