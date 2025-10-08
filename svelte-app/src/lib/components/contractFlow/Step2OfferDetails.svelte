@@ -13,6 +13,32 @@
 
 	$: offer = $contractFlowStore.selectedOffer;
 	$: term = offer?.terms?.[0];
+	$: price = (() => {
+		if (!term) return 0;
+		// Try paymentFrequency.price first
+		if (term.paymentFrequency?.price) {
+			return typeof term.paymentFrequency.price === 'object'
+				? term.paymentFrequency.price.amount / 100
+				: term.paymentFrequency.price;
+		}
+		// Check termsToPrices for TERM_BASED pricing
+		if (term.paymentFrequency?.termsToPrices?.length > 0) {
+			const termsPrice = term.paymentFrequency.termsToPrices[0].price;
+			return typeof termsPrice === 'object' ? termsPrice.amount / 100 : termsPrice;
+		}
+		// Fallback to rateStartPrice
+		if (term.rateStartPrice) {
+			return typeof term.rateStartPrice === 'object'
+				? term.rateStartPrice.amount / 100
+				: term.rateStartPrice;
+		}
+		return 0;
+	})();
+	$: totalValue = (() => {
+		if (!term?.contractVolumeInformation?.totalContractVolume) return 0;
+		const total = term.contractVolumeInformation.totalContractVolume;
+		return typeof total === 'object' ? total.amount / 100 : total;
+	})();
 
 	onMount(async () => {
 		if (!offer) {
@@ -38,7 +64,7 @@
 				{#if term.paymentFrequency}
 					<div class="flex items-baseline">
 						<span class="text-4xl font-bold">
-							{formatCurrencyDecimal(term.paymentFrequency.price)}
+							{formatCurrencyDecimal(price)}
 						</span>
 						<span class="text-xl ml-2">
 							{parsePaymentFrequency(term.paymentFrequency.paymentFrequency)}
@@ -46,9 +72,9 @@
 					</div>
 				{/if}
 
-				{#if term.contractVolumeInformation?.totalContractVolume}
+				{#if totalValue > 0}
 					<p class="mt-4 text-blue-100">
-						Total: {formatCurrencyDecimal(term.contractVolumeInformation.totalContractVolume)}
+						Total: {formatCurrencyDecimal(totalValue)}
 					</p>
 				{/if}
 			</div>

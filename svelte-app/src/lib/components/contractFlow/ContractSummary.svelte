@@ -6,7 +6,27 @@
 	export let preview = null;
 
 	$: term = offer?.terms?.[0];
-	$: price = term?.paymentFrequency?.price || term?.rateStartPrice || 0;
+	$: price = (() => {
+		if (!term) return 0;
+		// Try paymentFrequency.price first
+		if (term.paymentFrequency?.price) {
+			return typeof term.paymentFrequency.price === 'object'
+				? term.paymentFrequency.price.amount / 100
+				: term.paymentFrequency.price;
+		}
+		// Check termsToPrices for TERM_BASED pricing
+		if (term.paymentFrequency?.termsToPrices?.length > 0) {
+			const termsPrice = term.paymentFrequency.termsToPrices[0].price;
+			return typeof termsPrice === 'object' ? termsPrice.amount / 100 : termsPrice;
+		}
+		// Fallback to rateStartPrice
+		if (term.rateStartPrice) {
+			return typeof term.rateStartPrice === 'object'
+				? term.rateStartPrice.amount / 100
+				: term.rateStartPrice;
+		}
+		return 0;
+	})();
 	$: frequency = term?.paymentFrequency?.paymentFrequency || 'MONTHLY';
 </script>
 

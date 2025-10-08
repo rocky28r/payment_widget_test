@@ -63,7 +63,27 @@
 
 						{#if offer.terms && offer.terms.length > 0}
 							{@const term = offer.terms[0]}
-							{@const price = term.paymentFrequency?.price || term.rateStartPrice || 0}
+							{@const getPrice = () => {
+								// Try paymentFrequency.price first
+								if (term.paymentFrequency?.price) {
+									return typeof term.paymentFrequency.price === 'object'
+										? term.paymentFrequency.price.amount / 100
+										: term.paymentFrequency.price;
+								}
+								// Check termsToPrices for TERM_BASED pricing
+								if (term.paymentFrequency?.termsToPrices?.length > 0) {
+									const termsPrice = term.paymentFrequency.termsToPrices[0].price;
+									return typeof termsPrice === 'object' ? termsPrice.amount / 100 : termsPrice;
+								}
+								// Fallback to rateStartPrice
+								if (term.rateStartPrice) {
+									return typeof term.rateStartPrice === 'object'
+										? term.rateStartPrice.amount / 100
+										: term.rateStartPrice;
+								}
+								return 0;
+							}}
+							{@const price = getPrice()}
 							{@const frequency = term.paymentFrequency?.paymentFrequency || 'MONTHLY'}
 
 							<div class="mt-4 pt-4 border-t">
