@@ -103,6 +103,83 @@ class StorageManager {
 const storage = new StorageManager();
 
 // =================================================================
+// URL STATE MANAGER
+// =================================================================
+
+class URLStateManager {
+    constructor() {
+        this.params = new URLSearchParams(window.location.search);
+    }
+
+    /**
+     * Get current screen from URL
+     * @returns {string|null} Screen identifier (A, B, C, D)
+     */
+    getScreen() {
+        return this.params.get('screen');
+    }
+
+    /**
+     * Get current payment step from URL
+     * @returns {string|null} Payment step (recurring, upfront)
+     */
+    getPaymentStep() {
+        return this.params.get('payment');
+    }
+
+    /**
+     * Update URL with current screen and optional payment step
+     * @param {string} screen - Screen identifier
+     * @param {string|null} paymentStep - Optional payment step
+     */
+    updateURL(screen, paymentStep = null) {
+        const params = new URLSearchParams();
+        params.set('screen', screen);
+
+        if (paymentStep) {
+            params.set('payment', paymentStep);
+        }
+
+        const newURL = `${window.location.pathname}?${params.toString()}`;
+        window.history.pushState({ screen, paymentStep }, '', newURL);
+    }
+
+    /**
+     * Replace current URL state (no new history entry)
+     * @param {string} screen - Screen identifier
+     * @param {string|null} paymentStep - Optional payment step
+     */
+    replaceURL(screen, paymentStep = null) {
+        const params = new URLSearchParams();
+        params.set('screen', screen);
+
+        if (paymentStep) {
+            params.set('payment', paymentStep);
+        }
+
+        const newURL = `${window.location.pathname}?${params.toString()}`;
+        window.history.replaceState({ screen, paymentStep }, '', newURL);
+    }
+
+    /**
+     * Clear URL parameters
+     */
+    clearURL() {
+        window.history.pushState({}, '', window.location.pathname);
+    }
+
+    /**
+     * Check if URL has state information
+     * @returns {boolean}
+     */
+    hasURLState() {
+        return this.params.has('screen');
+    }
+}
+
+const urlStateManager = new URLStateManager();
+
+// =================================================================
 // STATE MANAGER
 // =================================================================
 
@@ -139,7 +216,10 @@ class StateManager {
                 recurringToken: null,
                 upfrontToken: null,
                 skippedRecurring: false,
-                skippedUpfront: false
+                skippedUpfront: false,
+                activePaymentStep: null, // 'recurring' or 'upfront'
+                awaitingRedirect: false,
+                sessionToken: null // Store session token for remounting
             },
             signatures: {
                 contractSignature: null,
@@ -179,11 +259,17 @@ class StateManager {
     }
 
     deepMerge(target, source) {
+        // If target is null/undefined, use source directly
+        if (!target) {
+            return source;
+        }
+
         const output = Object.assign({}, target);
         if (this.isObject(target) && this.isObject(source)) {
             Object.keys(source).forEach(key => {
                 if (this.isObject(source[key])) {
-                    if (!(key in target))
+                    // If target doesn't have this key or target[key] is null, use source[key] directly
+                    if (!(key in target) || !target[key])
                         Object.assign(output, { [key]: source[key] });
                     else
                         output[key] = this.deepMerge(target[key], source[key]);
@@ -207,15 +293,76 @@ class StateManager {
         const saved = storage.get('state');
         if (saved) {
             this.state = { ...this.state, ...saved };
+
+            // Validate and clean up invalid state
+            // If selectedOffer exists but doesn't have required properties, reset it
+            if (this.state.selectedOffer && typeof this.state.selectedOffer === 'object') {
+                if (!this.state.selectedOffer.id || !this.state.selectedOffer.term) {
+                    console.warn('Invalid selectedOffer in loaded state, resetting...');
+                    this.state.selectedOffer = null;
+                }
+            }
+
+            // Ensure payment object has all required fields (for backward compatibility)
+            this.state.payment = {
+                method: null,
+                recurringToken: null,
+                upfrontToken: null,
+                skippedRecurring: false,
+                skippedUpfront: false,
+                activePaymentStep: null,
+                awaitingRedirect: false,
+                sessionToken: null,
+                ...this.state.payment
+            };
         }
     }
 
     reset() {
+        // Reset to initial state
         this.state.currentScreen = 'A';
         this.state.selectedOffer = null;
+        this.state.customer = {
+            firstName: '',
+            lastName: '',
+            email: '',
+            dateOfBirth: '',
+            phone: '',
+            address: {
+                street: '',
+                city: '',
+                zipCode: '',
+                countryCode: ''
+            },
+            language: {
+                languageCode: 'de',
+                countryCode: 'DE'
+            }
+        };
+        this.state.contract = {
+            startDate: this.getDefaultStartDate(),
+            voucherCode: null,
+            selectedModules: []
+        };
         this.state.preview = null;
-        this.state.payment = { method: null, recurringToken: null, upfrontToken: null };
-        this.state.signatures = { contractSignature: null, textBlockSignatures: [] };
+        this.state.payment = {
+            method: null,
+            recurringToken: null,
+            upfrontToken: null,
+            skippedRecurring: false,
+            skippedUpfront: false,
+            activePaymentStep: null,
+            awaitingRedirect: false,
+            sessionToken: null
+        };
+        this.state.signatures = {
+            contractSignature: null,
+            textBlockSignatures: []
+        };
+        this.state.ui = {
+            isLoading: false,
+            errors: {}
+        };
         storage.clear();
         this.notify();
     }
@@ -477,7 +624,7 @@ class NavigationController {
         this.currentScreen = 'A';
     }
 
-    goToScreen(screen) {
+    goToScreen(screen, paymentStep = null) {
         // Hide all screens
         this.screens.forEach(s => {
             const element = document.getElementById(`screen-${s}`);
@@ -492,6 +639,9 @@ class NavigationController {
             targetElement.classList.remove('hidden');
             this.currentScreen = screen;
             stateManager.update({ currentScreen: screen });
+
+            // Update URL
+            urlStateManager.updateURL(screen, paymentStep);
 
             // Update progress dots
             this.updateProgressDots();
@@ -1711,7 +1861,10 @@ class ScreenBController {
         if (this.isPreviewLoading) return;
 
         const state = stateManager.state;
-        if (!state.selectedOffer) return;
+        if (!state.selectedOffer || !state.selectedOffer.term || !state.selectedOffer.term.id) {
+            console.warn('Cannot trigger preview: selectedOffer or term is missing');
+            return;
+        }
 
         // Build preview payload
         const payload = {
@@ -1788,7 +1941,15 @@ class ScreenBController {
         if (!content) return;
 
         const offer = state.selectedOffer;
-        if (!offer) return;
+        if (!offer || !offer.term) {
+            // No valid offer selected, show placeholder
+            content.innerHTML = `
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <p class="text-sm text-gray-600">Select an offer to see pricing details</p>
+                </div>
+            `;
+            return;
+        }
 
         // If no preview, show basic offer info
         if (!preview || !preview.paymentPreview) {
@@ -2138,13 +2299,28 @@ class ScreenCController {
 
             // Create payment session for recurring payment
             // Scope: MEMBER_ACCOUNT, Amount: 0 (for setting up recurring payment method)
+            const allowedChoices = state.selectedOffer.allowedPaymentChoices || [];
             const sessionConfig = {
                 amount: 0,
                 scope: 'MEMBER_ACCOUNT',
-                referenceText: `Membership: ${state.selectedOffer.name} (Recurring)`
+                referenceText: `Membership: ${state.selectedOffer.name} (Recurring)`,
+                permittedPaymentChoices: allowedChoices
             };
 
             const session = await apiService.createPaymentSession(sessionConfig);
+
+            // Save state with redirect information before mounting widget
+            stateManager.update({
+                payment: {
+                    ...state.payment,
+                    activePaymentStep: 'recurring',
+                    awaitingRedirect: true,
+                    sessionToken: session.token
+                }
+            });
+
+            // Update URL with payment step
+            urlStateManager.replaceURL('C', 'recurring');
 
             // Initialize recurring payment widget
             Utils.hide('recurring-payment-loading');
@@ -2179,17 +2355,19 @@ class ScreenCController {
     handleRecurringPaymentSuccess(paymentRequestToken, paymentInstrumentDetails) {
         console.log('Recurring payment success:', paymentRequestToken, paymentInstrumentDetails);
 
-        // Store recurring payment token
+        // Store recurring payment token and clear redirect flags
         stateManager.update({
             payment: {
                 ...stateManager.state.payment,
                 method: paymentInstrumentDetails?.type || 'UNKNOWN',
-                recurringToken: paymentRequestToken
+                recurringToken: paymentRequestToken,
+                awaitingRedirect: false,
+                activePaymentStep: null
             }
         });
 
-        // Show success message
-        Utils.hide('recurring-payment-container');
+        // Show success message (keep widget visible to display pre-selected payment method)
+        // Utils.hide('recurring-payment-container'); // Commented out - keep widget visible
         Utils.show('recurring-payment-success');
         Utils.show('recurring-status-badge');
 
@@ -2250,28 +2428,28 @@ class ScreenCController {
         try {
             const state = stateManager.state;
 
-            // Filter to ECOM-compatible payment methods (one-time only)
-            const allowedChoices = state.selectedOffer.allowedPaymentChoices || [];
-            const ecomCompatibleMethods = ['CREDIT_CARD', 'PAYPAL', 'TWINT', 'IDEAL', 'BANCONTACT'];
-            const permittedChoices = allowedChoices.filter(choice =>
-                ecomCompatibleMethods.includes(choice)
-            );
-
-            // Fallback to CREDIT_CARD if no compatible methods
-            if (permittedChoices.length === 0) {
-                permittedChoices.push('CREDIT_CARD');
-            }
-
             // Create payment session for upfront payment
             // Scope: ECOM, Amount: decimal format (e.g., 10.50 for €10.50)
             const sessionConfig = {
                 amount: amount,
                 scope: 'ECOM',
-                referenceText: `Membership: ${state.selectedOffer.name} (Upfront)`,
-                permittedPaymentChoices: permittedChoices
+                referenceText: `Membership: ${state.selectedOffer.name} (Upfront)`
             };
 
             const session = await apiService.createPaymentSession(sessionConfig);
+
+            // Save state with redirect information before mounting widget
+            stateManager.update({
+                payment: {
+                    ...state.payment,
+                    activePaymentStep: 'upfront',
+                    awaitingRedirect: true,
+                    sessionToken: session.token
+                }
+            });
+
+            // Update URL with payment step
+            urlStateManager.replaceURL('C', 'upfront');
 
             // Initialize upfront payment widget
             Utils.hide('upfront-payment-loading');
@@ -2306,16 +2484,18 @@ class ScreenCController {
     handleUpfrontPaymentSuccess(paymentRequestToken, paymentInstrumentDetails) {
         console.log('Upfront payment success:', paymentRequestToken, paymentInstrumentDetails);
 
-        // Store upfront payment token
+        // Store upfront payment token and clear redirect flags
         stateManager.update({
             payment: {
                 ...stateManager.state.payment,
-                upfrontToken: paymentRequestToken
+                upfrontToken: paymentRequestToken,
+                awaitingRedirect: false,
+                activePaymentStep: null
             }
         });
 
-        // Show success message
-        Utils.hide('upfront-payment-container');
+        // Show success message (keep widget visible to display pre-selected payment method)
+        // Utils.hide('upfront-payment-container'); // Commented out - keep widget visible
         Utils.show('upfront-payment-success');
         Utils.show('upfront-status-badge');
 
@@ -2341,6 +2521,179 @@ class ScreenCController {
             const currency = dueOnSigningObj?.currency || 'EUR';
             this.loadUpfrontPaymentWidget(dueAmount, currency);
         }, { once: true });
+    }
+
+    // ========================================
+    // REDIRECT RECOVERY: REMOUNT WIDGETS
+    // ========================================
+
+    /**
+     * Remount recurring payment widget after redirect
+     * Uses saved session token from state
+     */
+    async remountRecurringWidget() {
+        const state = stateManager.state;
+
+        if (!state.payment.sessionToken) {
+            console.error('No session token found for remounting recurring widget');
+            this.showRecurringPaymentError('Session expired. Please try again.');
+            return;
+        }
+
+        console.log('Remounting recurring payment widget with saved session...');
+
+        // Show recurring payment section
+        Utils.show('recurring-payment-section');
+        Utils.hide('recurring-payment-success');
+        Utils.hide('recurring-payment-error');
+        Utils.show('recurring-payment-loading');
+
+        // Initialize order summary
+        this.updateOrderSummary();
+
+        try {
+            // Wait for container to be visible
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            // Mount widget with saved session token
+            Utils.hide('recurring-payment-loading');
+            Utils.show('recurring-payment-container');
+
+            if (window.paymentWidget && typeof window.paymentWidget.init === 'function') {
+                const config = GlobalConfig.load();
+
+                this.recurringWidget = window.paymentWidget.init({
+                    userSessionToken: state.payment.sessionToken,
+                    container: 'recurring-payment-container',
+                    countryCode: config.countryCode || 'DE',
+                    locale: config.locale || 'de-DE',
+                    environment: config.environment || 'sandbox',
+                    onSuccess: (paymentRequestToken, paymentInstrumentDetails) => {
+                        this.handleRecurringPaymentSuccess(paymentRequestToken, paymentInstrumentDetails);
+                    },
+                    onError: (error) => {
+                        this.handleRecurringPaymentError(error);
+                    }
+                });
+
+                // Clear awaitingRedirect flag after successful remount
+                stateManager.update({
+                    payment: {
+                        ...stateManager.state.payment,
+                        awaitingRedirect: false
+                    }
+                });
+
+                console.log('Recurring widget remounted successfully');
+            } else {
+                throw new Error('Payment widget not loaded');
+            }
+
+        } catch (error) {
+            console.error('Error remounting recurring widget:', error);
+            this.showRecurringPaymentError(error.message);
+        }
+    }
+
+    /**
+     * Remount upfront payment widget after redirect
+     * Uses saved session token from state
+     */
+    async remountUpfrontWidget() {
+        const state = stateManager.state;
+
+        // If recurring payment was already completed, show it in completed state
+        if (state.payment.recurringToken) {
+            console.log('Recurring payment already completed, showing success state');
+            Utils.show('recurring-payment-section');
+            Utils.hide('recurring-payment-loading');
+            Utils.hide('recurring-payment-error');
+            Utils.show('recurring-payment-success');
+            Utils.show('recurring-status-badge');
+            Utils.hide('recurring-payment-container'); // Hide the widget container itself
+        }
+
+        // Check if upfront payment was already completed
+        if (state.payment.upfrontToken) {
+            console.log('Upfront payment already completed, showing success state and enabling continue button');
+            Utils.show('upfront-payment-section');
+            Utils.hide('upfront-payment-loading');
+            Utils.hide('upfront-payment-error');
+            Utils.hide('upfront-payment-container');
+            Utils.show('upfront-payment-success');
+            Utils.show('upfront-status-badge');
+            document.getElementById('continue-screen-C').disabled = false;
+            return;
+        }
+
+        if (!state.payment.sessionToken) {
+            console.error('No session token found for remounting upfront widget');
+            this.showUpfrontPaymentError('Session expired. Please try again.');
+            return;
+        }
+
+        console.log('Remounting upfront payment widget with saved session...');
+
+        // Get amount and currency from preview
+        const preview = state.preview;
+        const dueOnSigningObj = preview?.paymentPreview?.dueOnSigningAmount;
+        const dueAmount = typeof dueOnSigningObj === 'object' ? (dueOnSigningObj.amount || 0) : (dueOnSigningObj || 0);
+        const currency = typeof dueOnSigningObj === 'object' ? (dueOnSigningObj.currency || 'EUR') : 'EUR';
+
+        // Show upfront payment section
+        Utils.show('upfront-payment-section');
+        Utils.hide('upfront-payment-success');
+        Utils.hide('upfront-payment-error');
+        Utils.show('upfront-payment-loading');
+
+        // Update amount display
+        document.getElementById('upfront-amount-display').textContent = Utils.formatCurrency(dueAmount, currency);
+
+        // Initialize order summary
+        this.updateOrderSummary();
+
+        try {
+            // Wait for container to be visible
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            // Mount widget with saved session token
+            Utils.hide('upfront-payment-loading');
+            Utils.show('upfront-payment-container');
+
+            if (window.paymentWidget && typeof window.paymentWidget.init === 'function') {
+                const config = GlobalConfig.load();
+
+                this.upfrontWidget = window.paymentWidget.init({
+                    userSessionToken: state.payment.sessionToken,
+                    container: 'upfront-payment-container',
+                    countryCode: config.countryCode || 'DE',
+                    locale: config.locale || 'de-DE',
+                    environment: config.environment || 'sandbox',
+                    onSuccess: (paymentRequestToken, paymentInstrumentDetails) => {
+                        this.handleUpfrontPaymentSuccess(paymentRequestToken, paymentInstrumentDetails);
+                    },
+                    onError: (error) => {
+                        this.handleUpfrontPaymentError(error);
+                    }
+                });
+
+                // Clear awaitingRedirect flag after successful remount
+                stateManager.update({
+                    payment: {
+                        ...stateManager.state.payment,
+                        awaitingRedirect: false
+                    }
+                });
+
+                console.log('Upfront widget remounted successfully');
+            } else {
+                throw new Error('Payment widget not loaded');
+            }
+
+        } catch (error) {
+            console.error('Error remounting upfront widget:', error);
+            this.showUpfrontPaymentError(error.message);
+        }
     }
 }
 
@@ -2582,6 +2935,150 @@ class ScreenDController {
 const screenDController = new ScreenDController();
 
 // =================================================================
+// REDIRECT RECOVERY HANDLER
+// =================================================================
+
+/**
+ * Handles returning from payment redirects (3D Secure, etc.)
+ * Detects if user was in payment flow and remounts the widget
+ */
+function handlePaymentRedirectRecovery() {
+    const state = stateManager.state;
+
+    // Check if we're returning from a payment redirect
+    if (!state.payment.awaitingRedirect || !state.payment.activePaymentStep) {
+        return false; // Not a redirect recovery scenario
+    }
+
+    console.log('Detected return from payment redirect, recovering flow...', {
+        step: state.payment.activePaymentStep,
+        screen: state.currentScreen
+    });
+
+    // Navigate to payment screen
+    navigationController.goToScreen('C');
+
+    // Wait for DOM to be ready, then remount the appropriate widget
+    setTimeout(() => {
+        if (state.payment.activePaymentStep === 'recurring') {
+            console.log('Remounting recurring payment widget...');
+            screenCController.remountRecurringWidget();
+        } else if (state.payment.activePaymentStep === 'upfront') {
+            console.log('Remounting upfront payment widget...');
+            screenCController.remountUpfrontWidget();
+        }
+    }, 200);
+
+    return true; // Handled redirect recovery
+}
+
+// =================================================================
+// URL RESTORE HANDLER
+// =================================================================
+
+/**
+ * Restore application state from URL parameters
+ * @param {string} screen - Screen identifier from URL
+ * @param {string|null} paymentStep - Payment step from URL
+ */
+function handleURLRestore(screen, paymentStep) {
+    const state = stateManager.state;
+
+    // Navigate to the screen without adding to history (use replaceURL internally)
+    navigationController.currentScreen = screen;
+    document.querySelectorAll('[id^="screen-"]').forEach(el => el.classList.add('hidden'));
+    const targetScreen = document.getElementById(`screen-${screen}`);
+    if (targetScreen) {
+        targetScreen.classList.remove('hidden');
+    }
+
+    // Replace URL to ensure it's clean
+    urlStateManager.replaceURL(screen, paymentStep);
+    stateManager.update({ currentScreen: screen });
+    navigationController.updateProgressDots();
+    navigationController.updateScreenLabel();
+
+    // Handle each screen restoration
+    switch (screen) {
+        case 'A':
+            screenAController.init();
+            break;
+
+        case 'B':
+            if (state.selectedOffer) {
+                screenBController.init();
+            } else {
+                // No offer selected, go back to A
+                console.warn('No offer selected, redirecting to screen A');
+                navigationController.goToScreen('A');
+                screenAController.init();
+            }
+            break;
+
+        case 'C':
+            if (state.selectedOffer && state.preview) {
+                // Always attach event listeners first
+                screenCController.attachEventListeners();
+                screenCController.updateOrderSummary();
+
+                // Restore payment screen
+                if (paymentStep === 'upfront' && state.payment.activePaymentStep === 'upfront') {
+                    // User was on upfront payment, remount it
+                    console.log('Restoring upfront payment from URL');
+                    navigationController.currentScreen = 'C';
+                    setTimeout(() => screenCController.remountUpfrontWidget(), 200);
+                } else if (paymentStep === 'recurring' && state.payment.activePaymentStep === 'recurring') {
+                    // User was on recurring payment, remount it
+                    console.log('Restoring recurring payment from URL');
+                    navigationController.currentScreen = 'C';
+                    setTimeout(() => screenCController.remountRecurringWidget(), 200);
+                } else {
+                    // No specific payment step or mismatch, reinitialize normally
+                    screenCController.init();
+                }
+            } else {
+                console.warn('Incomplete state for payment screen, redirecting to screen A');
+                navigationController.goToScreen('A');
+                screenAController.init();
+            }
+            break;
+
+        case 'D':
+            if (state.selectedOffer && state.preview && (state.payment.recurringToken || state.payment.upfrontToken)) {
+                screenDController.init();
+            } else {
+                console.warn('Incomplete state for review screen, redirecting to screen A');
+                navigationController.goToScreen('A');
+                screenAController.init();
+            }
+            break;
+
+        default:
+            navigationController.goToScreen('A');
+            screenAController.init();
+    }
+}
+
+/**
+ * Set up browser back/forward navigation handler
+ */
+function setupHistoryNavigation() {
+    window.addEventListener('popstate', (event) => {
+        console.log('Browser navigation detected:', event.state);
+        const urlScreen = urlStateManager.getScreen();
+        const urlPaymentStep = urlStateManager.getPaymentStep();
+
+        if (urlScreen) {
+            handleURLRestore(urlScreen, urlPaymentStep);
+        } else {
+            // No URL state, go to start
+            navigationController.goToScreen('A');
+            screenAController.init();
+        }
+    });
+}
+
+// =================================================================
 // INITIALIZATION
 // =================================================================
 
@@ -2590,10 +3087,56 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Wait a bit for GlobalConfig to initialize (from nav.js)
     setTimeout(() => {
-        // Initialize Screen A (Offer Selection)
-        screenAController.init();
+        // First check URL for screen/payment step
+        const urlScreen = urlStateManager.getScreen();
+        const urlPaymentStep = urlStateManager.getPaymentStep();
 
-        // Navigation is managed by NavigationController
-        navigationController.goToScreen('A');
+        if (urlScreen) {
+            console.log('Restoring from URL:', { screen: urlScreen, paymentStep: urlPaymentStep });
+            handleURLRestore(urlScreen, urlPaymentStep);
+        } else {
+            // Check if we're recovering from a payment redirect (fallback)
+            const isRecovering = handlePaymentRedirectRecovery();
+
+            if (!isRecovering) {
+                // Normal initialization - start at Screen A
+                screenAController.init();
+                navigationController.goToScreen('A');
+            }
+        }
+
+        // Set up "Start Over" button handlers
+        setupStartOverButtons();
+
+        // Set up browser back/forward navigation
+        setupHistoryNavigation();
     }, 100);
 });
+
+/**
+ * Set up Start Over button event listeners
+ * Confirms with user before resetting the flow
+ */
+function setupStartOverButtons() {
+    const handleStartOver = () => {
+        const confirmed = confirm('Are you sure you want to start over? All your progress will be lost.');
+        if (confirmed) {
+            console.log('User requested to start over, resetting flow...');
+            stateManager.reset();
+            navigationController.goToScreen('A');
+            screenAController.init();
+        }
+    };
+
+    // Desktop button
+    const desktopBtn = document.getElementById('start-over-btn-desktop');
+    if (desktopBtn) {
+        desktopBtn.addEventListener('click', handleStartOver);
+    }
+
+    // Mobile button
+    const mobileBtn = document.getElementById('start-over-btn-mobile');
+    if (mobileBtn) {
+        mobileBtn.addEventListener('click', handleStartOver);
+    }
+}

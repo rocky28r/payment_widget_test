@@ -139,6 +139,21 @@
             background-color: #10B981;
         }
 
+        /* Start Over Button */
+        .start-over-btn {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            z-index: 40;
+            transition: all 0.3s;
+        }
+
+        @media (max-width: 768px) {
+            .start-over-btn {
+                position: static;
+            }
+        }
+
         /* Input focus styles */
         input:focus, select:focus, textarea:focus {
             outline: none;
@@ -216,16 +231,29 @@
     <main class="pt-20 pb-8">
         <!-- Progress Indicator (Mobile) -->
         <div class="md:hidden fixed top-16 left-0 right-0 bg-white border-b border-gray-200 py-3 px-4 z-30">
-            <div class="flex items-center justify-center space-x-2">
-                <div class="progress-dot active" data-screen="A"></div>
-                <div class="progress-dot" data-screen="B"></div>
-                <div class="progress-dot" data-screen="C"></div>
-                <div class="progress-dot" data-screen="D"></div>
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-2 flex-1 justify-center">
+                    <div class="progress-dot active" data-screen="A"></div>
+                    <div class="progress-dot" data-screen="B"></div>
+                    <div class="progress-dot" data-screen="C"></div>
+                    <div class="progress-dot" data-screen="D"></div>
+                </div>
+                <button id="start-over-btn-mobile" class="text-xs text-gray-600 hover:text-red-600 font-medium transition ml-2">
+                    Start Over
+                </button>
             </div>
             <div class="text-center text-sm font-medium text-gray-700 mt-2" id="current-screen-label">
                 Choose Your Plan
             </div>
         </div>
+
+        <!-- Start Over Button (Desktop) -->
+        <button id="start-over-btn-desktop" class="hidden md:!block start-over-btn px-4 py-2 bg-white border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-red-50 hover:border-red-400 hover:text-red-600 transition font-medium shadow-sm">
+            <svg class="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Start Over
+        </button>
 
         <div class="container mx-auto px-4 max-w-7xl mt-8 md:mt-0">
 
@@ -505,15 +533,8 @@
                                 </div>
                             </div>
 
-                            <div class="flex items-center space-x-2 mb-6 text-gray-600 text-sm">
-                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/>
-                                </svg>
-                                <span>Secure payment • We never store your full card details</span>
-                            </div>
-
                             <!-- Recurring Payment Widget Container -->
-                            <div id="recurring-payment-container" class="min-h-[400px]">
+                            <div id="recurring-payment-container" class="min-h-0">
                                 <!-- Recurring payment widget will be mounted here -->
                             </div>
 
@@ -567,15 +588,8 @@
                                 </div>
                             </div>
 
-                            <div class="flex items-center space-x-2 mb-6 text-gray-600 text-sm">
-                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/>
-                                </svg>
-                                <span>Secure payment • We never store your full card details</span>
-                            </div>
-
                             <!-- Upfront Payment Widget Container -->
-                            <div id="upfront-payment-container" class="min-h-[400px]">
+                            <div id="upfront-payment-container" class="min-h-0">
                                 <!-- Upfront payment widget will be mounted here -->
                             </div>
 
