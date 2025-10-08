@@ -103,6 +103,83 @@ class StorageManager {
 const storage = new StorageManager();
 
 // =================================================================
+// URL STATE MANAGER
+// =================================================================
+
+class URLStateManager {
+    constructor() {
+        this.params = new URLSearchParams(window.location.search);
+    }
+
+    /**
+     * Get current screen from URL
+     * @returns {string|null} Screen identifier (A, B, C, D)
+     */
+    getScreen() {
+        return this.params.get('screen');
+    }
+
+    /**
+     * Get current payment step from URL
+     * @returns {string|null} Payment step (recurring, upfront)
+     */
+    getPaymentStep() {
+        return this.params.get('payment');
+    }
+
+    /**
+     * Update URL with current screen and optional payment step
+     * @param {string} screen - Screen identifier
+     * @param {string|null} paymentStep - Optional payment step
+     */
+    updateURL(screen, paymentStep = null) {
+        const params = new URLSearchParams();
+        params.set('screen', screen);
+
+        if (paymentStep) {
+            params.set('payment', paymentStep);
+        }
+
+        const newURL = `${window.location.pathname}?${params.toString()}`;
+        window.history.pushState({ screen, paymentStep }, '', newURL);
+    }
+
+    /**
+     * Replace current URL state (no new history entry)
+     * @param {string} screen - Screen identifier
+     * @param {string|null} paymentStep - Optional payment step
+     */
+    replaceURL(screen, paymentStep = null) {
+        const params = new URLSearchParams();
+        params.set('screen', screen);
+
+        if (paymentStep) {
+            params.set('payment', paymentStep);
+        }
+
+        const newURL = `${window.location.pathname}?${params.toString()}`;
+        window.history.replaceState({ screen, paymentStep }, '', newURL);
+    }
+
+    /**
+     * Clear URL parameters
+     */
+    clearURL() {
+        window.history.pushState({}, '', window.location.pathname);
+    }
+
+    /**
+     * Check if URL has state information
+     * @returns {boolean}
+     */
+    hasURLState() {
+        return this.params.has('screen');
+    }
+}
+
+const urlStateManager = new URLStateManager();
+
+// =================================================================
 // STATE MANAGER
 // =================================================================
 
@@ -547,7 +624,7 @@ class NavigationController {
         this.currentScreen = 'A';
     }
 
-    goToScreen(screen) {
+    goToScreen(screen, paymentStep = null) {
         // Hide all screens
         this.screens.forEach(s => {
             const element = document.getElementById(`screen-${s}`);
@@ -562,6 +639,9 @@ class NavigationController {
             targetElement.classList.remove('hidden');
             this.currentScreen = screen;
             stateManager.update({ currentScreen: screen });
+
+            // Update URL
+            urlStateManager.updateURL(screen, paymentStep);
 
             // Update progress dots
             this.updateProgressDots();
@@ -2239,6 +2319,9 @@ class ScreenCController {
                 }
             });
 
+            // Update URL with payment step
+            urlStateManager.replaceURL('C', 'recurring');
+
             // Initialize recurring payment widget
             Utils.hide('recurring-payment-loading');
             Utils.show('recurring-payment-container');
@@ -2364,6 +2447,9 @@ class ScreenCController {
                     sessionToken: session.token
                 }
             });
+
+            // Update URL with payment step
+            urlStateManager.replaceURL('C', 'upfront');
 
             // Initialize upfront payment widget
             Utils.hide('upfront-payment-loading');
@@ -2874,6 +2960,108 @@ function handlePaymentRedirectRecovery() {
 }
 
 // =================================================================
+// URL RESTORE HANDLER
+// =================================================================
+
+/**
+ * Restore application state from URL parameters
+ * @param {string} screen - Screen identifier from URL
+ * @param {string|null} paymentStep - Payment step from URL
+ */
+function handleURLRestore(screen, paymentStep) {
+    const state = stateManager.state;
+
+    // Navigate to the screen without adding to history (use replaceURL internally)
+    navigationController.currentScreen = screen;
+    document.querySelectorAll('[id^="screen-"]').forEach(el => el.classList.add('hidden'));
+    const targetScreen = document.getElementById(`screen-${screen}`);
+    if (targetScreen) {
+        targetScreen.classList.remove('hidden');
+    }
+
+    // Replace URL to ensure it's clean
+    urlStateManager.replaceURL(screen, paymentStep);
+    stateManager.update({ currentScreen: screen });
+    navigationController.updateProgressDots();
+    navigationController.updateScreenLabel();
+
+    // Handle each screen restoration
+    switch (screen) {
+        case 'A':
+            screenAController.init();
+            break;
+
+        case 'B':
+            if (state.selectedOffer) {
+                screenBController.init();
+            } else {
+                // No offer selected, go back to A
+                console.warn('No offer selected, redirecting to screen A');
+                navigationController.goToScreen('A');
+                screenAController.init();
+            }
+            break;
+
+        case 'C':
+            if (state.selectedOffer && state.preview) {
+                // Restore payment screen
+                if (paymentStep === 'upfront' && state.payment.activePaymentStep === 'upfront') {
+                    // User was on upfront payment, remount it
+                    console.log('Restoring upfront payment from URL');
+                    navigationController.currentScreen = 'C';
+                    setTimeout(() => screenCController.remountUpfrontWidget(), 200);
+                } else if (paymentStep === 'recurring' && state.payment.activePaymentStep === 'recurring') {
+                    // User was on recurring payment, remount it
+                    console.log('Restoring recurring payment from URL');
+                    navigationController.currentScreen = 'C';
+                    setTimeout(() => screenCController.remountRecurringWidget(), 200);
+                } else {
+                    // No specific payment step or mismatch, reinitialize normally
+                    screenCController.init();
+                }
+            } else {
+                console.warn('Incomplete state for payment screen, redirecting to screen A');
+                navigationController.goToScreen('A');
+                screenAController.init();
+            }
+            break;
+
+        case 'D':
+            if (state.selectedOffer && state.preview && (state.payment.recurringToken || state.payment.upfrontToken)) {
+                screenDController.init();
+            } else {
+                console.warn('Incomplete state for review screen, redirecting to screen A');
+                navigationController.goToScreen('A');
+                screenAController.init();
+            }
+            break;
+
+        default:
+            navigationController.goToScreen('A');
+            screenAController.init();
+    }
+}
+
+/**
+ * Set up browser back/forward navigation handler
+ */
+function setupHistoryNavigation() {
+    window.addEventListener('popstate', (event) => {
+        console.log('Browser navigation detected:', event.state);
+        const urlScreen = urlStateManager.getScreen();
+        const urlPaymentStep = urlStateManager.getPaymentStep();
+
+        if (urlScreen) {
+            handleURLRestore(urlScreen, urlPaymentStep);
+        } else {
+            // No URL state, go to start
+            navigationController.goToScreen('A');
+            screenAController.init();
+        }
+    });
+}
+
+// =================================================================
 // INITIALIZATION
 // =================================================================
 
@@ -2882,17 +3070,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Wait a bit for GlobalConfig to initialize (from nav.js)
     setTimeout(() => {
-        // Check if we're recovering from a payment redirect
-        const isRecovering = handlePaymentRedirectRecovery();
+        // First check URL for screen/payment step
+        const urlScreen = urlStateManager.getScreen();
+        const urlPaymentStep = urlStateManager.getPaymentStep();
 
-        if (!isRecovering) {
-            // Normal initialization - start at Screen A
-            screenAController.init();
-            navigationController.goToScreen('A');
+        if (urlScreen) {
+            console.log('Restoring from URL:', { screen: urlScreen, paymentStep: urlPaymentStep });
+            handleURLRestore(urlScreen, urlPaymentStep);
+        } else {
+            // Check if we're recovering from a payment redirect (fallback)
+            const isRecovering = handlePaymentRedirectRecovery();
+
+            if (!isRecovering) {
+                // Normal initialization - start at Screen A
+                screenAController.init();
+                navigationController.goToScreen('A');
+            }
         }
 
         // Set up "Start Over" button handlers
         setupStartOverButtons();
+
+        // Set up browser back/forward navigation
+        setupHistoryNavigation();
     }, 100);
 });
 
