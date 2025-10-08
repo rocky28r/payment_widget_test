@@ -1567,6 +1567,7 @@ class ScreenAController {
                     id: offer.id,
                     name: offer.name,
                     description: offer.description,
+                    productType: offer.defaultVariant.productType,
                     term: offer.defaultVariant.term,
                     allowedPaymentChoices: offer.allowedPaymentChoices || []
                 }
@@ -1753,7 +1754,10 @@ class ScreenBController {
      * Based on payment preview data, determines which payment steps are needed
      */
     handlePaymentNavigation() {
-        const preview = stateManager.state.preview;
+        const state = stateManager.state;
+        const preview = state.preview;
+        const selectedOffer = state.selectedOffer;
+
         if (!preview || !preview.paymentPreview) {
             // No preview available, go to payment screen (it will handle errors)
             navigationController.goToScreen('C');
@@ -1769,6 +1773,9 @@ class ScreenBController {
         const dueAmount = typeof dueOnSigning === 'object' ? (dueOnSigning.amount || 0) : (dueOnSigning || 0);
         const totalAmount = typeof totalValue === 'object' ? (totalValue.amount || totalValue || 0) : (totalValue || 0);
 
+        // Check if this is a recurring membership (needs payment method capture)
+        const isRecurringMembership = selectedOffer?.productType === 'RECURRING';
+
         // Determine payment scenarios
         const hasRecurring = paymentSchedule.length > 0 && paymentSchedule.some(p => p.amount > 0);
         const hasUpfront = dueAmount > 0;
@@ -1777,18 +1784,34 @@ class ScreenBController {
         console.log('Payment navigation check:', {
             dueAmount,
             totalAmount,
+            isRecurringMembership,
             hasRecurring,
             hasUpfront,
             isFullPaymentUpfront,
             scheduleLength: paymentSchedule.length
         });
 
-        // Scenario 1: No payments needed at all (edge case, shouldn't happen)
-        if (!hasRecurring && !hasUpfront) {
+        // Scenario 1: Recurring membership without payments (capture payment method only)
+        if (isRecurringMembership && !hasRecurring && !hasUpfront) {
+            console.log('Recurring membership without immediate payment - capturing payment method');
+            stateManager.update({
+                payment: {
+                    ...state.payment,
+                    skippedRecurring: false, // Show recurring widget to capture payment method
+                    skippedUpfront: true
+                }
+            });
+            navigationController.goToScreen('C');
+            screenCController.init();
+            return;
+        }
+
+        // Scenario 2: Non-recurring with no payments (shouldn't happen, but handle gracefully)
+        if (!isRecurringMembership && !hasRecurring && !hasUpfront) {
             console.log('No payments needed, skipping to review');
             stateManager.update({
                 payment: {
-                    ...stateManager.state.payment,
+                    ...state.payment,
                     skippedRecurring: true,
                     skippedUpfront: true
                 }
@@ -1798,12 +1821,12 @@ class ScreenBController {
             return;
         }
 
-        // Scenario 2: Full payment upfront (skip recurring, show only upfront)
-        if (isFullPaymentUpfront) {
+        // Scenario 3: Full payment upfront (skip recurring, show only upfront)
+        if (isFullPaymentUpfront && !isRecurringMembership) {
             console.log('Full payment upfront, skipping recurring step');
             stateManager.update({
                 payment: {
-                    ...stateManager.state.payment,
+                    ...state.payment,
                     skippedRecurring: true,
                     skippedUpfront: false
                 }
@@ -1813,12 +1836,27 @@ class ScreenBController {
             return;
         }
 
-        // Scenario 3: No upfront payment (show only recurring)
-        if (!hasUpfront && hasRecurring) {
+        // Scenario 4: Recurring membership with only upfront payment
+        if (isRecurringMembership && hasUpfront && !hasRecurring) {
+            console.log('Recurring membership with upfront payment - both widgets needed');
+            stateManager.update({
+                payment: {
+                    ...state.payment,
+                    skippedRecurring: false, // Capture payment method
+                    skippedUpfront: false    // Process upfront payment
+                }
+            });
+            navigationController.goToScreen('C');
+            screenCController.init();
+            return;
+        }
+
+        // Scenario 5: No upfront payment (show only recurring)
+        if (!hasUpfront && (hasRecurring || isRecurringMembership)) {
             console.log('No upfront payment, only recurring');
             stateManager.update({
                 payment: {
-                    ...stateManager.state.payment,
+                    ...state.payment,
                     skippedRecurring: false,
                     skippedUpfront: true
                 }
@@ -1828,11 +1866,11 @@ class ScreenBController {
             return;
         }
 
-        // Scenario 4: Both payments needed (default)
+        // Scenario 6: Both payments needed (default)
         console.log('Both recurring and upfront payments needed');
         stateManager.update({
             payment: {
-                ...stateManager.state.payment,
+                ...state.payment,
                 skippedRecurring: false,
                 skippedUpfront: false
             }
@@ -2229,9 +2267,73 @@ class ScreenCController {
     constructor() {
         this.recurringWidget = null;
         this.upfrontWidget = null;
+        this.listenersAttached = false;
+    }
+
+    cleanup() {
+        console.log('Cleaning up payment widgets and UI state...');
+
+        // 1. Destroy widget instances
+        if (this.recurringWidget && typeof this.recurringWidget.destroy === 'function') {
+            try {
+                this.recurringWidget.destroy();
+                console.log('✓ Recurring widget destroyed');
+            } catch (e) {
+                console.error('Error destroying recurring widget:', e);
+            }
+        }
+        if (this.upfrontWidget && typeof this.upfrontWidget.destroy === 'function') {
+            try {
+                this.upfrontWidget.destroy();
+                console.log('✓ Upfront widget destroyed');
+            } catch (e) {
+                console.error('Error destroying upfront widget:', e);
+            }
+        }
+        this.recurringWidget = null;
+        this.upfrontWidget = null;
+
+        // 2. Clear widget container DOM (in case destroy doesn't fully clear)
+        const recurringContainer = document.getElementById('recurring-payment-container');
+        if (recurringContainer) {
+            recurringContainer.innerHTML = '';
+        }
+        const upfrontContainer = document.getElementById('upfront-payment-container');
+        if (upfrontContainer) {
+            upfrontContainer.innerHTML = '';
+        }
+
+        // 3. Reset all UI states to initial
+        // Recurring section
+        Utils.hide('recurring-payment-section');
+        Utils.hide('recurring-payment-loading');
+        Utils.hide('recurring-payment-error');
+        Utils.hide('recurring-payment-success');
+        Utils.hide('recurring-status-badge');
+
+        // Upfront section
+        Utils.hide('upfront-payment-section');
+        Utils.hide('upfront-payment-loading');
+        Utils.hide('upfront-payment-error');
+        Utils.hide('upfront-payment-success');
+        Utils.hide('upfront-status-badge');
+
+        // 4. Reset continue button
+        const continueBtn = document.getElementById('continue-screen-C');
+        if (continueBtn) {
+            continueBtn.disabled = true;
+        }
+
+        // 5. Reset listener flag
+        this.listenersAttached = false;
+
+        console.log('✓ Payment cleanup complete');
     }
 
     async init() {
+        // Always cleanup first to ensure fresh state
+        this.cleanup();
+
         this.updateOrderSummary();
         this.attachEventListeners();
 
@@ -2269,6 +2371,11 @@ class ScreenCController {
     }
 
     attachEventListeners() {
+        // Only attach listeners once to prevent duplicates
+        if (this.listenersAttached) {
+            return;
+        }
+
         document.getElementById('back-screen-C')?.addEventListener('click', () => {
             navigationController.goToScreen('B');
         });
@@ -2277,6 +2384,8 @@ class ScreenCController {
             navigationController.goToScreen('D');
             screenDController.init();
         });
+
+        this.listenersAttached = true;
     }
 
     updateOrderSummary() {
@@ -2289,6 +2398,7 @@ class ScreenCController {
     // ========================================
 
     async loadRecurringPaymentWidget() {
+        Utils.show('recurring-payment-section');
         Utils.show('recurring-payment-loading');
         Utils.hide('recurring-payment-container');
         Utils.hide('recurring-payment-error');
@@ -2420,6 +2530,7 @@ class ScreenCController {
         // Display the amount to the user
         document.getElementById('upfront-amount-display').textContent = Utils.formatCurrency(amount, currency);
 
+        Utils.show('upfront-payment-section');
         Utils.show('upfront-payment-loading');
         Utils.hide('upfront-payment-container');
         Utils.hide('upfront-payment-error');
@@ -2926,6 +3037,9 @@ class ScreenDController {
     }
 
     reset() {
+        // Clean up payment widgets before resetting
+        screenCController.cleanup();
+
         stateManager.reset();
         navigationController.goToScreen('A');
         screenAController.init();
@@ -3122,7 +3236,14 @@ function setupStartOverButtons() {
         const confirmed = confirm('Are you sure you want to start over? All your progress will be lost.');
         if (confirmed) {
             console.log('User requested to start over, resetting flow...');
+
+            // Clean up payment widgets before resetting
+            screenCController.cleanup();
+
+            // Reset state (preserves global API config in localStorage)
             stateManager.reset();
+
+            // Navigate to start screen
             navigationController.goToScreen('A');
             screenAController.init();
         }
