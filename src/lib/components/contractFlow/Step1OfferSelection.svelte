@@ -104,7 +104,7 @@
 									</div>
 									{#if totalFlatFees > 0}
 										<div class="mt-2 text-sm text-gray-600">
-											+ {formatCurrencyDecimal(totalFlatFees)} einmalige Gebühren
+											+ {formatCurrencyDecimal(totalFlatFees)} one-time fees
 										</div>
 									{/if}
 								{:else if isTermBased}
@@ -117,20 +117,20 @@
 										</div>
 										{#if contractTerm}
 											<div class="text-gray-500 text-sm mt-1">
-												für {formatDuration(contractTerm)}
+												for {formatDuration(contractTerm)}
 											</div>
 										{/if}
 										{#if contractTerm?.value && price > 0}
 											{@const { amount: priceAmount } = extractPrice(price)}
 											{@const effectiveMonthly = priceAmount / contractTerm.value}
 											<div class="text-gray-400 text-xs mt-1">
-												entspricht {formatCurrencyDecimal(effectiveMonthly)}/Monat
+												equals {formatCurrencyDecimal(effectiveMonthly)}/month
 											</div>
 										{/if}
 									</div>
 									{#if totalFlatFees > 0}
 										<div class="mt-2 text-sm text-gray-600">
-											+ {formatCurrencyDecimal(totalFlatFees)} einmalige Gebühren
+											+ {formatCurrencyDecimal(totalFlatFees)} one-time fees
 										</div>
 									{/if}
 								{/if}

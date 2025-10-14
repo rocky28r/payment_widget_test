@@ -48,6 +48,11 @@
 			errors.scope = scopeError;
 		}
 
+		const referenceTextError = validateField('referenceText', formData.referenceText);
+		if (referenceTextError !== true) {
+			errors.referenceText = referenceTextError;
+		}
+
 		return Object.keys(errors).length === 0;
 	}
 
@@ -144,7 +149,9 @@
 		<Input
 			label="Reference Text"
 			bind:value={formData.referenceText}
-			placeholder="Optional bank statement reference"
+			error={errors.referenceText}
+			placeholder="Bank statement reference"
+			required
 		/>
 
 		<div class="grid grid-cols-1 md:grid-cols-2 gap-4">

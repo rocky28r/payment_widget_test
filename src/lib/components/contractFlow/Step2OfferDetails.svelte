@@ -402,7 +402,7 @@
 			<!-- Term Selection (if multiple terms available) -->
 			{#if hasMultipleTerms}
 				<div class="mb-6">
-					<h3 class="text-lg font-semibold mb-3">Wählen Sie Ihre Vertragslaufzeit</h3>
+					<h3 class="text-lg font-semibold mb-3">Select Your Contract Duration</h3>
 					<div class="grid grid-cols-1 gap-4">
 						{#each terms as t (t.id)}
 							{@const termPrice = getTermPrice(t)}
@@ -425,7 +425,7 @@
 
 								<div class="mb-2">
 									<div class="text-2xl font-bold text-gray-900">{formatCurrencyDecimal(termPrice)}</div>
-									<div class="text-sm text-gray-600">pro Monat</div>
+									<div class="text-sm text-gray-600">per month</div>
 								</div>
 
 								{#if termFlatFees > 0}
@@ -436,13 +436,13 @@
 
 								<div class="space-y-1 text-xs text-gray-600">
 									{#if t.initialTerm}
-										<div>📅 Laufzeit: {formatDuration(t.initialTerm)}</div>
+										<div>📅 Duration: {formatDuration(t.initialTerm)}</div>
 									{/if}
 									{#if t.extensionTerm}
-										<div>🔄 Verlängerung: {formatDuration(t.extensionTerm)}</div>
+										<div>🔄 Extension: {formatDuration(t.extensionTerm)}</div>
 									{/if}
 									{#if t.cancelationPeriod}
-										<div>⏱️ Kündigung: {formatDuration(t.cancelationPeriod)}</div>
+										<div>⏱️ Cancellation: {formatDuration(t.cancelationPeriod)}</div>
 									{/if}
 								</div>
 							</button>
@@ -453,26 +453,26 @@
 
 			<!-- Contract Configuration Fields -->
 			<div class="bg-base-200 rounded-lg p-6 mb-6">
-				<h3 class="font-bold text-lg mb-4">📋 Vertragsdetails</h3>
+				<h3 class="font-bold text-lg mb-4">📋 Contract Details</h3>
 
 				<div class="space-y-4">
 					<Input
-						label="Vertragsbeginn"
+						label="Contract Start"
 						type="date"
 						bind:value={startDate}
 						required
-						helpText="Ihr Mitgliedschaft beginnt an diesem Datum"
+						helpText="Your membership starts on this date"
 					/>
 
 					<div>
 						<label class="block text-sm font-medium mb-1">
-							Gutscheincode (Optional)
+							Voucher Code (Optional)
 						</label>
 						<div class="flex gap-3">
 							<input
 								type="text"
 								bind:value={voucherCode}
-								placeholder="Code eingeben"
+								placeholder="Enter code"
 								class="input input-bordered flex-1"
 								disabled={!!appliedVoucherCode || previewLoading}
 							/>
@@ -483,7 +483,7 @@
 									class="btn btn-error"
 									disabled={previewLoading}
 								>
-									Entfernen
+									Remove
 								</button>
 							{:else}
 								<button
@@ -492,7 +492,7 @@
 									class="btn btn-success"
 									disabled={previewLoading || !voucherCode.trim()}
 								>
-									Anwenden
+									Apply
 								</button>
 							{/if}
 						</div>
@@ -504,7 +504,7 @@
 								<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-4 h-4 stroke-current">
 									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
 								</svg>
-								Gutschein: {appliedVoucherCode}
+								Voucher: {appliedVoucherCode}
 							</div>
 						{/if}
 					</div>
@@ -514,23 +514,23 @@
 			<!-- Personal Information Section -->
 			<div class="bg-base-200 rounded-lg p-6 mb-6">
 				<div class="flex items-center justify-between mb-4">
-					<h3 class="font-bold text-lg">👤 Persönliche Informationen</h3>
+					<h3 class="font-bold text-lg">👤 Personal Information</h3>
 					<button type="button" class="btn btn-ghost btn-sm" on:click={fillTestData}>
-						Testdaten einfügen
+						Fill Test Data
 					</button>
 				</div>
 
 				<div class="space-y-4">
 					<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 						<Input
-							label="Vorname"
+							label="First Name"
 							bind:value={personalInfo.firstName}
 							on:input={(e) => updatePersonalField('firstName', e.target.value)}
 							required
 							placeholder="Max"
 						/>
 						<Input
-							label="Nachname"
+							label="Last Name"
 							bind:value={personalInfo.lastName}
 							on:input={(e) => updatePersonalField('lastName', e.target.value)}
 							required
@@ -540,16 +540,16 @@
 
 					<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 						<Input
-							label="Geburtsdatum"
+							label="Date of Birth"
 							type="date"
 							bind:value={personalInfo.dateOfBirth}
 							on:input={(e) => updatePersonalField('dateOfBirth', e.target.value)}
 							required
-							placeholder="TT.MM.JJJJ"
-							helpText="Erforderlich für altersbasierte Preise"
+							placeholder="YYYY-MM-DD"
+							helpText="Required for age-based pricing"
 						/>
 						<Input
-							label="E-Mail"
+							label="Email"
 							type="email"
 							bind:value={personalInfo.email}
 							on:input={(e) => updatePersonalField('email', e.target.value)}
@@ -559,7 +559,7 @@
 					</div>
 
 					<Input
-						label="Telefonnummer"
+						label="Phone Number"
 						type="tel"
 						bind:value={personalInfo.phone}
 						on:input={(e) => updatePersonalField('phone', e.target.value)}
@@ -570,11 +570,11 @@
 
 			<!-- Address Section -->
 			<div class="bg-base-200 rounded-lg p-6 mb-6">
-				<h3 class="font-bold text-lg mb-4">📍 Adresse</h3>
+				<h3 class="font-bold text-lg mb-4">📍 Address</h3>
 
 				<div class="space-y-4">
 					<Input
-						label="Straße und Hausnummer"
+						label="Street and House Number"
 						bind:value={personalInfo.street}
 						on:input={(e) => updatePersonalField('street', e.target.value)}
 						required
@@ -584,7 +584,7 @@
 					<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
 						<div class="md:col-span-2">
 							<Input
-								label="Stadt"
+								label="City"
 								bind:value={personalInfo.city}
 								on:input={(e) => updatePersonalField('city', e.target.value)}
 								required
@@ -592,7 +592,7 @@
 							/>
 						</div>
 						<Input
-							label="Postleitzahl"
+							label="Postal Code"
 							bind:value={personalInfo.zip}
 							on:input={(e) => updatePersonalField('zip', e.target.value)}
 							required
@@ -602,7 +602,7 @@
 
 					<div>
 						<label for="countryCode" class="block text-sm font-medium mb-1">
-							Land <span class="text-error">*</span>
+							Country <span class="text-error">*</span>
 						</label>
 						<select
 							id="countryCode"
@@ -611,17 +611,17 @@
 							required
 							class="select select-bordered w-full"
 						>
-							<option value="">Land auswählen</option>
-							<option value="DE">Deutschland</option>
-							<option value="AT">Österreich</option>
-							<option value="CH">Schweiz</option>
-							<option value="FR">Frankreich</option>
-							<option value="IT">Italien</option>
-							<option value="ES">Spanien</option>
-							<option value="NL">Niederlande</option>
-							<option value="BE">Belgien</option>
-							<option value="GB">Vereinigtes Königreich</option>
-							<option value="US">Vereinigte Staaten</option>
+							<option value="">Select country</option>
+							<option value="DE">Germany</option>
+							<option value="AT">Austria</option>
+							<option value="CH">Switzerland</option>
+							<option value="FR">France</option>
+							<option value="IT">Italy</option>
+							<option value="ES">Spain</option>
+							<option value="NL">Netherlands</option>
+							<option value="BE">Belgium</option>
+							<option value="GB">United Kingdom</option>
+							<option value="US">United States</option>
 						</select>
 					</div>
 				</div>
@@ -631,38 +631,38 @@
 			<div class="space-y-6">
 				{#if offer.description}
 					<div>
-						<h3 class="text-sm font-semibold text-gray-700 mb-2">Beschreibung</h3>
+						<h3 class="text-sm font-semibold text-gray-700 mb-2">Description</h3>
 						<p class="text-gray-600">{offer.description}</p>
 					</div>
 				{/if}
 
 				<div>
-					<h3 class="text-sm font-semibold text-gray-700 mb-3">Vertragsdetails</h3>
+					<h3 class="text-sm font-semibold text-gray-700 mb-3">Contract Details</h3>
 					<div class="grid grid-cols-2 gap-4">
 						{#if term.initialTerm}
 							<div>
-								<p class="text-xs text-gray-500">Vertragslaufzeit</p>
+								<p class="text-xs text-gray-500">Contract Duration</p>
 								<p class="font-semibold">{formatDuration(term.initialTerm)}</p>
 							</div>
 						{/if}
 
 						{#if term.extensionTerm}
 							<div>
-								<p class="text-xs text-gray-500">Verlängerung</p>
+								<p class="text-xs text-gray-500">Extension</p>
 								<p class="font-semibold">{formatDuration(term.extensionTerm)}</p>
 							</div>
 						{/if}
 
 						{#if term.cancelationPeriod}
 							<div>
-								<p class="text-xs text-gray-500">Kündigungsfrist</p>
+								<p class="text-xs text-gray-500">Cancellation Period</p>
 								<p class="font-semibold">{formatDuration(term.cancelationPeriod)}</p>
 							</div>
 						{/if}
 
 						{#if totalValue > 0}
 							<div>
-								<p class="text-xs text-gray-500">Gesamtwert</p>
+								<p class="text-xs text-gray-500">Total Value</p>
 								<p class="font-semibold text-primary">{formatCurrencyDecimal(totalValue)}</p>
 							</div>
 						{/if}
@@ -672,7 +672,7 @@
 
 			<!-- Actions -->
 			<div class="flex justify-between mt-6 pt-6 border-t">
-				<Button variant="secondary" on:click={handleBack} disabled={previewLoading}>← Zurück</Button>
+				<Button variant="secondary" on:click={handleBack} disabled={previewLoading}>← Back</Button>
 				<Button
 					variant="primary"
 					on:click={handleNext}
@@ -680,15 +680,15 @@
 				>
 					{#if previewLoading}
 						<span class="loading loading-spinner loading-sm"></span>
-						Lädt...
+						Loading...
 					{:else}
-						Weiter zur Zahlung →
+						Continue to Payment →
 					{/if}
 				</Button>
 			</div>
 		{:else}
-			<Alert type="error">Kein Angebot ausgewählt. Bitte gehen Sie zurück und wählen Sie ein Angebot.</Alert>
-			<Button variant="secondary" on:click={handleBack} class="mt-4">← Zurück zur Auswahl</Button>
+			<Alert type="error">No offer selected. Please go back and select an offer.</Alert>
+			<Button variant="secondary" on:click={handleBack} class="mt-4">← Back to Selection</Button>
 		{/if}
 	</Card>
 		</div>

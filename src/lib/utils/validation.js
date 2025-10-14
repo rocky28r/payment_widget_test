@@ -12,9 +12,13 @@ export const VALIDATION_RULES = {
 		validate: (value) => {
 			const num = parseFloat(value);
 			if (isNaN(num)) return 'Amount must be a number';
-			if (num < 0) return 'Amount cannot be negative';
+			if (num < 0) return 'Amount must be 0 or greater';
 			return true;
 		}
+	},
+	referenceText: {
+		required: true,
+		message: 'Reference text is required'
 	},
 	scope: {
 		required: true,
@@ -35,8 +39,8 @@ export function validateField(fieldName, value, rules = VALIDATION_RULES) {
 	const rule = rules[fieldName];
 	if (!rule) return true;
 
-	// Required check
-	if (rule.required && (!value || (typeof value === 'string' && value.trim() === ''))) {
+	// Required check - allow 0 as a valid value for numeric fields
+	if (rule.required && (value === null || value === undefined || value === '' || (typeof value === 'string' && value.trim() === ''))) {
 		return rule.message || `${fieldName} is required`;
 	}
 

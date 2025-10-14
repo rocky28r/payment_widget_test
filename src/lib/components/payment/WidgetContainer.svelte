@@ -8,14 +8,19 @@
 	let widgetInstance = null;
 	let container;
 	let mounted = false;
+	let currentToken = null;
 
 	// Reactive statement: mount widget when session token changes
-	$: if ($sessionStore.token && container && !mounted) {
-		mountWidget();
+	$: if ($sessionStore.token && container) {
+		// If token has changed, remount the widget
+		if (currentToken !== $sessionStore.token) {
+			currentToken = $sessionStore.token;
+			mountWidget();
+		}
 	}
 
 	async function mountWidget() {
-		if (mounted || !container) return;
+		if (!container) return;
 
 		// Check if paymentWidget is available
 		if (typeof window.paymentWidget === 'undefined') {
@@ -77,6 +82,7 @@
 	// Watch for token changes
 	$: if (!$sessionStore.token) {
 		mounted = false;
+		currentToken = null;
 	}
 </script>
 

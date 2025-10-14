@@ -104,12 +104,12 @@ export function formatDateShort(date) {
  */
 export function parsePaymentFrequency(frequency) {
 	const frequencies = {
-		MONTHLY: 'pro Monat',
-		YEARLY: 'pro Jahr',
-		QUARTERLY: 'pro Quartal',
-		WEEKLY: 'pro Woche',
-		DAILY: 'pro Tag',
-		ONE_TIME: 'einmalig'
+		MONTHLY: 'per month',
+		YEARLY: 'per year',
+		QUARTERLY: 'per quarter',
+		WEEKLY: 'per week',
+		DAILY: 'per day',
+		ONE_TIME: 'one-time'
 	};
 
 	return frequencies[frequency] || frequency;
@@ -122,11 +122,11 @@ export function parsePaymentFrequency(frequency) {
  */
 export function parseCancellationStrategy(strategy) {
 	const strategies = {
-		END_OF_CONTRACT: 'Zum Vertragsende',
-		END_OF_MONTH: 'Zum Monatsende',
-		END_OF_QUARTER: 'Zum Quartalsende',
-		END_OF_YEAR: 'Zum Jahresende',
-		IMMEDIATE: 'Sofort'
+		END_OF_CONTRACT: 'End of contract',
+		END_OF_MONTH: 'End of month',
+		END_OF_QUARTER: 'End of quarter',
+		END_OF_YEAR: 'End of year',
+		IMMEDIATE: 'Immediately'
 	};
 
 	return strategies[strategy] || strategy;
@@ -139,9 +139,9 @@ export function parseCancellationStrategy(strategy) {
  */
 export function parseExtensionType(type) {
 	const types = {
-		AUTOMATIC: 'Automatisch',
-		MANUAL: 'Manuell',
-		NONE: 'Keine'
+		AUTOMATIC: 'Automatic',
+		MANUAL: 'Manual',
+		NONE: 'None'
 	};
 
 	return types[type] || type;
@@ -160,31 +160,31 @@ export function formatDuration(duration) {
 		const value = duration.value;
 		const unit = duration.unit?.toLowerCase() || 'months';
 
-		// Convert to German units
+		// Convert to English units
 		const unitMap = {
-			'month': value === 1 ? 'Monat' : 'Monate',
-			'months': value === 1 ? 'Monat' : 'Monate',
-			'year': value === 1 ? 'Jahr' : 'Jahre',
-			'years': value === 1 ? 'Jahr' : 'Jahre',
-			'week': value === 1 ? 'Woche' : 'Wochen',
-			'weeks': value === 1 ? 'Woche' : 'Wochen',
-			'day': value === 1 ? 'Tag' : 'Tage',
-			'days': value === 1 ? 'Tag' : 'Tage'
+			'month': value === 1 ? 'month' : 'months',
+			'months': value === 1 ? 'month' : 'months',
+			'year': value === 1 ? 'year' : 'years',
+			'years': value === 1 ? 'year' : 'years',
+			'week': value === 1 ? 'week' : 'weeks',
+			'weeks': value === 1 ? 'week' : 'weeks',
+			'day': value === 1 ? 'day' : 'days',
+			'days': value === 1 ? 'day' : 'days'
 		};
 
-		const germanUnit = unitMap[unit] || unit;
-		return `${value} ${germanUnit}`;
+		const englishUnit = unitMap[unit] || unit;
+		return `${value} ${englishUnit}`;
 	}
 
 	// Handle number format (months)
 	const months = duration;
-	if (months === 1) return '1 Monat';
-	if (months < 12) return `${months} Monate`;
-	if (months === 12) return '1 Jahr';
-	if (months % 12 === 0) return `${months / 12} Jahre`;
+	if (months === 1) return '1 month';
+	if (months < 12) return `${months} months`;
+	if (months === 12) return '1 year';
+	if (months % 12 === 0) return `${months / 12} years`;
 
 	const years = Math.floor(months / 12);
 	const remainingMonths = months % 12;
 
-	return `${years} ${years === 1 ? 'Jahr' : 'Jahre'} und ${remainingMonths} ${remainingMonths === 1 ? 'Monat' : 'Monate'}`;
+	return `${years} ${years === 1 ? 'year' : 'years'} and ${remainingMonths} ${remainingMonths === 1 ? 'month' : 'months'}`;
 }

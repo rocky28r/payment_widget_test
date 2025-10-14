@@ -77,7 +77,7 @@
 </script>
 
 <Card>
-	<div slot="title" class="text-lg font-bold">Ihre Vertragsübersicht</div>
+	<div slot="title" class="text-lg font-bold">Your Contract Overview</div>
 
 	{#if loading}
 		<!-- Loading State -->
@@ -95,7 +95,7 @@
 					<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
 				</svg>
 				<div>
-					<p class="text-sm font-semibold text-red-800">Preview-Fehler</p>
+					<p class="text-sm font-semibold text-red-800">Preview Error</p>
 					<p class="text-xs text-red-700 mt-1">{error}</p>
 				</div>
 			</div>
@@ -112,14 +112,14 @@
 						<!-- Recurring Plan Summary (FR2.2) -->
 						<div class="space-y-2 text-sm">
 							<div class="flex justify-between">
-								<span class="text-gray-600">Monatlicher Beitrag:</span>
+								<span class="text-gray-600">Monthly Payment:</span>
 								<span class="font-semibold">{formatCurrencyDecimal(price)}</span>
 							</div>
 						</div>
 
 						{#if flatFees.length > 0}
 							<div class="pt-2 border-t border-gray-200">
-								<p class="text-xs font-semibold text-gray-700 mb-2">Einmalige Gebühren:</p>
+								<p class="text-xs font-semibold text-gray-700 mb-2">One-time Fees:</p>
 								<div class="space-y-1">
 									{#each flatFees as fee}
 										<div class="flex justify-between text-sm">
@@ -133,18 +133,18 @@
 
 						<div class="pt-4 border-t-2 border-gray-300">
 							<div class="flex justify-between items-center mb-2">
-								<span class="font-bold text-base text-gray-700">✅ Heute fällig:</span>
+								<span class="font-bold text-base text-gray-700">✅ Due Today:</span>
 								<span class="font-bold text-2xl text-green-600">{formatCurrencyDecimal(totalDueToday)}</span>
 							</div>
 							<p class="text-sm text-gray-600 font-medium">
-								Dann {formatCurrencyDecimal(monthlyPayment)} {parsePaymentFrequency(frequency)}
+								Then {formatCurrencyDecimal(monthlyPayment)} {parsePaymentFrequency(frequency)}
 							</p>
 						</div>
 
 						<!-- Payment Schedule (if available from preview) -->
 						{#if paymentSchedule.length > 0}
 							<div class="pt-4 border-t border-gray-200">
-								<p class="text-sm font-semibold text-gray-700 mb-3">📅 Zahlungsplan:</p>
+								<p class="text-sm font-semibold text-gray-700 mb-3">📅 Payment Schedule:</p>
 								<div class="space-y-2 max-h-40 overflow-y-auto">
 									{#each paymentSchedule.slice(0, 5) as payment, idx}
 										<div class="flex justify-between text-sm {idx === 0 ? 'text-gray-900 font-semibold' : 'text-gray-600'}">
@@ -153,7 +153,7 @@
 										</div>
 									{/each}
 									{#if paymentSchedule.length > 5}
-										<p class="text-xs text-gray-500 italic mt-2">+ {paymentSchedule.length - 5} weitere Zahlungen</p>
+										<p class="text-xs text-gray-500 italic mt-2">+ {paymentSchedule.length - 5} more payments</p>
 									{/if}
 								</div>
 							</div>
@@ -175,7 +175,7 @@
 
 						{#if flatFees.length > 0}
 							<div class="pt-2 border-t border-gray-200">
-								<p class="text-xs font-semibold text-gray-700 mb-2">Einmalige Gebühren:</p>
+								<p class="text-xs font-semibold text-gray-700 mb-2">One-time Fees:</p>
 								<div class="space-y-1">
 									{#each flatFees as fee}
 										<div class="flex justify-between text-sm">
@@ -189,11 +189,11 @@
 
 						<div class="pt-4 border-t-2 border-gray-300">
 							<div class="flex justify-between items-center mb-2">
-								<span class="font-bold text-base text-gray-700">✅ Heute fällig:</span>
+								<span class="font-bold text-base text-gray-700">✅ Due Today:</span>
 								<span class="font-bold text-2xl text-green-600">{formatCurrencyDecimal(totalDueToday)}</span>
 							</div>
 							<p class="text-sm text-gray-600 font-medium">
-								Keine wiederkehrenden Zahlungen
+								No recurring payments
 							</p>
 						</div>
 					{/if}
@@ -202,14 +202,14 @@
 					<div class="pt-4 space-y-2 text-sm border-t border-gray-200">
 						{#if term.initialTerm}
 							<div class="flex justify-between">
-								<span class="text-gray-600">Vertragslaufzeit:</span>
+								<span class="text-gray-600">Contract Duration:</span>
 								<span class="font-medium text-gray-900">{formatDuration(term.initialTerm)}</span>
 							</div>
 						{/if}
 
 						{#if term.cancelationPeriod}
 							<div class="flex justify-between">
-								<span class="text-gray-600">Kündigungsfrist:</span>
+								<span class="text-gray-600">Cancellation Period:</span>
 								<span class="font-medium text-gray-900">{formatDuration(term.cancelationPeriod)}</span>
 							</div>
 						{/if}
@@ -219,11 +219,11 @@
 			<!-- Preview Info -->
 			{#if preview}
 				<div class="pt-3 border-t border-gray-200">
-					<p class="text-xs text-gray-500 mb-2">Vorschau-Information</p>
+					<p class="text-xs text-gray-500 mb-2">Preview Information</p>
 					<div class="space-y-1 text-xs">
 						{#if preview.startDate}
 							<div class="flex justify-between">
-								<span class="text-gray-600">Startdatum:</span>
+								<span class="text-gray-600">Start Date:</span>
 								<span class="font-medium">{new Date(preview.startDate).toLocaleDateString('de-DE')}</span>
 							</div>
 						{/if}
@@ -232,6 +232,6 @@
 			{/if}
 		</div>
 	{:else}
-		<p class="text-gray-500 text-sm">Kein Angebot ausgewählt</p>
+		<p class="text-gray-500 text-sm">No offer selected</p>
 	{/if}
 </Card>
