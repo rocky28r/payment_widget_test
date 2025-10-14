@@ -521,6 +521,23 @@ git checkout old-html-flow-final
 - Mobile-first responsive design
 - Reusable component library
 
+### README.md Refactored (2025-10-14)
+
+**Previous Version**: Comprehensive documentation with all features, recent changes, and support sections
+
+**New Version**: Focused showcase documentation emphasizing:
+- Clear purpose: showcase of MagicLine OpenAPI + Payment Widget integration
+- Detailed code examples for key implementations:
+  - User session creation with full request/response
+  - Payment widget mounting with configuration options
+  - Dual payment token system (recurring + one-time)
+  - Live pricing with preview API
+  - Session persistence implementation
+- Removed: Recent changes section, support section, excessive troubleshooting
+- Added: "Tips for Integration" section with practical gotchas
+
+**Rationale**: The README now clearly positions the project as a **demonstration/showcase** rather than a production application, making it more useful for developers learning to integrate these systems.
+
 ---
 
 *End of documentation.*
