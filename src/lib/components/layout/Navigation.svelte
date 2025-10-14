@@ -1,6 +1,7 @@
 <script>
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
+	import { base } from '$app/paths';
 	import { contractFlowStore } from '$lib/stores/contractFlow.js';
 
 	export let showConfigModal = () => {};
@@ -14,15 +15,16 @@
 	$: currentPath = $page.url.pathname;
 
 	function isRouteActive(route) {
+		const fullPath = `${base}${route.path}`;
 		if (route.path === '/') {
-			return currentPath === '/';
+			return currentPath === base || currentPath === `${base}/`;
 		}
-		return currentPath.startsWith(route.path);
+		return currentPath.startsWith(fullPath);
 	}
 
 	function handleStartOver() {
 		contractFlowStore.reset();
-		goto('/contract-flow');
+		goto(`${base}/contract-flow`);
 	}
 </script>
 
@@ -51,7 +53,7 @@
 			<div class="flex items-center space-x-4">
 				{#each routes as route}
 					<a
-						href={route.path}
+						href="{base}{route.path}"
 						class="px-4 py-2 rounded-md transition"
 						class:bg-blue-50={isRouteActive(route)}
 						class:text-blue-600={isRouteActive(route)}
@@ -104,7 +106,7 @@
 				</button>
 
 				<!-- Start Over Button (only show in contract flow) -->
-				{#if currentPath === '/contract-flow'}
+				{#if currentPath === `${base}/contract-flow`}
 					<button
 						on:click={handleStartOver}
 						class="px-3 py-2 rounded-md transition hover:bg-red-100 text-red-700 flex items-center space-x-1"
