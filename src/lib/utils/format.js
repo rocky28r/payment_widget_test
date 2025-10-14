@@ -1,4 +1,29 @@
 /**
+ * Extract amount and currency from API price object or simple number
+ * @param {number|object} price - Price as number or {amount, currency} object
+ * @returns {{amount: number, currency: string}} - Extracted amount and currency
+ */
+export function extractPrice(price) {
+	if (price === null || price === undefined) {
+		return { amount: 0, currency: 'EUR' };
+	}
+
+	// Handle object format from API
+	if (typeof price === 'object' && price.amount !== undefined) {
+		return {
+			amount: price.amount,
+			currency: price.currency || 'EUR'
+		};
+	}
+
+	// Handle simple number format
+	return {
+		amount: price,
+		currency: 'EUR' // Default to EUR for legacy data
+	};
+}
+
+/**
  * Format currency amount with proper locale formatting
  * @param {number} amount - Amount in cents/smallest unit
  * @param {string} currency - Currency code (EUR, USD, etc.)
@@ -18,16 +43,23 @@ export function formatCurrency(amount, currency = 'EUR') {
 
 /**
  * Format currency from decimal value (already in main unit)
- * @param {number} amount - Amount in main unit (e.g., 10.50 EUR)
- * @param {string} currency - Currency code
+ * Supports both simple number and API price object formats
+ * @param {number|object} amountOrPrice - Amount in main unit (e.g., 10.50) or {amount, currency} object
+ * @param {string} currencyOverride - Optional currency code to override
  * @returns {string} - Formatted currency string
  */
-export function formatCurrencyDecimal(amount, currency = 'EUR') {
-	if (amount === null || amount === undefined) return '—';
+export function formatCurrencyDecimal(amountOrPrice, currencyOverride = null) {
+	if (amountOrPrice === null || amountOrPrice === undefined) return '—';
+
+	// Extract amount and currency from price object or simple number
+	const { amount, currency } = extractPrice(amountOrPrice);
+
+	// Use override currency if provided, otherwise use extracted currency
+	const finalCurrency = currencyOverride || currency;
 
 	return new Intl.NumberFormat('de-DE', {
 		style: 'currency',
-		currency: currency
+		currency: finalCurrency
 	}).format(amount);
 }
 

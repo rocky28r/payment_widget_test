@@ -41,248 +41,486 @@ After implementing ANY code changes, fixes, or new features, you **MUST** test t
 
 ## Project Overview
 
-This is a comprehensive Payment Widget Test Suite that integrates with the Finion Pay API to create payment sessions and test payment widget functionality. The application provides a complete workflow from session creation through widget mounting and payment processing.
+This is a **Svelte + SvelteKit** application that provides comprehensive testing and demonstration of the SPA Payment Widget integration with the Finion Pay API. The application includes:
+
+1. **Payment Widget Test Environment** - Standalone widget testing with session creation and configuration
+2. **Membership Contract Flow** - Complete 6-step membership signup process with payment integration
 
 ## Architecture
 
-**Multi-file Structure**: The application is organized into separate files for better maintainability:
-- `index.html` - Main HTML structure with three-section layout and modern responsive design
-- `styles.css` - Custom CSS styles (font family and transition effects)
-- `config.js` - Centralized API and widget configuration (shared across entire application)
-- `script.js` - Comprehensive JavaScript for API integration, session management, and widget control
+**Framework**: SvelteKit 2.x with Svelte 5 (Runes API)
 
-**Three-Section Layout**:
-1. **Payment Session Generation** - API configuration and session creation
-2. **Widget Configuration** - Component mounting parameters and settings
-3. **Component Container** - Payment widget display area with error handling
+**Styling**: TailwindCSS 3.x + DaisyUI 4.x for component theming
 
-**External Dependencies**:
-- TailwindCSS via CDN for styling and responsive design
-- Google Fonts (Inter) for typography
-- SPA Payment Widget library: `https://widget.dev.payment.sportalliance.com/widget.js`
+**Build Tool**: Vite 5.x with hot module reload
 
-**Widget API**:
-- Initialization: `window.paymentWidget.init(config)` returns `{ destroy(): void }`
-- Cleanup: Call `widgetInstance.destroy()` to unmount and cleanup resources
+**Deployment**: Static adapter for hosting on any static platform
 
-## Centralized Configuration
-
-**config.js**: Provides centralized API and widget configuration used throughout the application:
-- `API_CONFIG`: Base URLs, endpoints, headers configuration, and helper methods
-- `WIDGET_CONFIG`: Widget script URL and default settings
-- `STORAGE_CONFIG`: Local storage keys and versioning
-
-**Global API Configuration** (nav.js - `GlobalConfig` class):
-- Access via the "Config" button (gear icon) in the navigation bar
-- Set API Key and Base URL once, used across all pages
-- Automatically syncs to both Payment Widget Test and Contract Flow pages
-- Persisted in localStorage under `globalApiConfig` key
-
-**Usage**:
-```javascript
-// Get API headers with authentication
-const headers = API_CONFIG.getHeaders(apiKey);
-
-// Get full API URL
-const url = `${baseUrl}${API_CONFIG.endpoints.userSession}`;
-
-// Use widget configuration
-script.src = `${WIDGET_CONFIG.scriptUrl}?t=${Date.now()}`;
-
-// Access global configuration
-GlobalConfig.open();  // Open config modal
-GlobalConfig.save();  // Save and sync configuration
-GlobalConfig.load();  // Load saved configuration
+**Structure**:
 ```
-
-## API Integration
-
-**Finion Pay API Endpoint**: `/v1/payments/user-session` (POST)
-
-**Authentication**: API key via `X-API-KEY` header
-
-**Request Parameters**:
-- `amount` (required): Payment amount (use 0 for recurring payments)
-- `scope` (required): "MEMBER_ACCOUNT" or "ECOM"
-- `referenceText` (optional): Bank statement reference
-- `customerId` (optional): ERP customer ID (can be used with finionPayCustomerId)
-- `finionPayCustomerId` (optional): Finion Pay customer UUID (can be used with customerId)
-- `permittedPaymentChoices` (optional): Array of allowed payment methods
-
-**Response**: Returns session token and expiry timestamp
-
-**Contract Flow Integration**: When creating payment sessions in the contract flow:
-- For `MEMBER_ACCOUNT` scope: Uses `allowedPaymentChoices` from the selected membership offer (field name in API response)
-- For `ECOM` scope: Restricts to one-time payment methods only (CREDIT_CARD, PAYPAL, TWINT, IDEAL, BANCONTACT)
-- All payment choices from offer are passed, including CASH and BANK_TRANSFER
-- Fallback defaults include: SEPA, BACS, CREDIT_CARD, CASH, BANK_TRANSFER
-- Implementation: `contract-flow-steps.js:1330` `createPaymentSession()` function
+src/
+├── lib/
+│   ├── components/       # Reusable Svelte components
+│   ├── services/         # API clients and business logic
+│   └── utils/            # Helper functions
+├── routes/               # SvelteKit file-based routing
+│   ├── +layout.svelte    # Root layout with navigation
+│   ├── +page.svelte      # Payment widget test (home)
+│   └── contract-flow/    # Contract flow route
+└── app.html              # HTML template
+```
 
 ## Development Commands
 
-Since this is a static website with separate HTML, CSS, and JS files, no build process is required:
-- **Run locally**: Open `index.html` directly in a browser or use a simple HTTP server
-- **Test with HTTP server**: `python3 -m http.server 8000` or `npx serve .`
+```bash
+# Install dependencies
+npm install
+
+# Start development server (http://localhost:5173)
+npm run dev
+
+# Build for production
+npm run build
+
+# Preview production build
+npm run preview
+```
 
 ## Key Implementation Details
 
-**Session Management**: Application maintains session state including token and expiry validation.
+### Global API Configuration
 
-**Form Validation**: Comprehensive client-side validation with real-time error feedback.
+**Location**: `src/lib/components/layout/Navigation.svelte`
 
-**Customer ID Fields**: Both customerId and finionPayCustomerId can be provided together in the same session request.
+**Implementation**: `GlobalConfig` class provides centralized API configuration accessible across all pages.
 
-**Progressive Enhancement**: Mount button is disabled until valid session token is created.
+**Usage**:
+```javascript
+// Access from GlobalConfig
+const config = GlobalConfig.load();
+// config = { apiKey: string, baseUrl: string }
 
-**Error Handling**: Comprehensive error handling for API failures, widget loading issues, and session expiry.
+// All API calls use these credentials
+const headers = {
+  'Content-Type': 'application/json',
+  'X-API-KEY': config.apiKey
+};
 
-**Activity Logging**: Enhanced logging system with timestamps, categorized messages, and clear functionality.
+const response = await fetch(`${config.baseUrl}/v1/payments/user-session`, {
+  method: 'POST',
+  headers,
+  body: JSON.stringify(requestData)
+});
+```
 
-**Loading States**: Visual feedback during API calls and widget mounting operations.
+**Storage**: Persisted in localStorage under `globalApiConfig` key.
 
-**Payment Methods**: Supports CREDIT_CARD, PAYPAL, SEPA, BACS, TWINT, IDEAL, and other payment types.
+**Access**: Click "Config" button (gear icon) in navigation bar to open modal.
 
-## Membership Offer Cost Display
+### Payment Widget Integration
 
-**Contract Flow - Step 2: Offer Details** implements a streamlined, transparent cost display system:
+**Widget Library**: `https://widget.dev.payment.sportalliance.com/widget.js`
 
-**Design Strategy**:
-1. **Cost Hierarchy** - Most important costs shown first (hero card)
-2. **Visual Timeline** - Chronological display with intelligent deduplication
-3. **Single Source of Truth** - "What's Included" consolidates all contract terms
-4. **No Redundancy** - Information appears once, in the most relevant location
-5. **Smart Condensing** - Timeline hides duplicate pricing, shows only when it changes
+**Initialization**:
+```javascript
+const widget = window.paymentWidget.init({
+  userSessionToken: 'token-from-api',
+  container: 'payment-widget-container', // DOM element ID
+  countryCode: 'DE',
+  locale: 'en-US',
+  environment: 'test' | 'sandbox' | 'live',
+  onSuccess: (paymentRequestToken, paymentInstrumentDetails) => {
+    // Handle successful payment
+  },
+  onError: (error) => {
+    // Handle payment error
+  }
+});
+```
 
-**Implementation Components**:
+**Cleanup**:
+```javascript
+// Always destroy widget before unmounting component
+widget.destroy();
+```
 
-**1. Hero Cost Summary Card** (Gradient blue card, most prominent)
-- Starting price with large, bold typography (from `term.paymentFrequency.price` or `term.rateStartPrice`)
-- Setup fees and one-time costs (from `term.flatFees`)
-- Total contract value over initial term (from `term.contractVolumeInformation.totalContractVolume`)
-- Safe price formatting using `formatCurrencyDecimal()` for API decimal values
+**Important**: The widget uses `userSessionToken` which contains amount and payment details. Do NOT pass separate `amount` or `currency` parameters.
 
-**2. Contract Timeline Visualization** (Intelligently condensed)
-- 🟢 **Green**: Promotional/bonus periods (from `term.rateBonusPeriods`) - only if present
-- 🔵 **Blue**: Initial membership period with pricing
-- 🟣 **Purple**: Extension period - **ONLY shown if price actually changes**
-  - Automatically hidden if extension price equals initial price
-  - Eliminates redundant €10.00/mo → €10.00/mo display
-- Uses `priceChangesAfterInitialTerm` check to prevent duplication
+### API Integration
 
-**3. Price Adjustments & Changes** (Amber warning box)
-- Only shown if `term.priceAdjustmentRules` exist
-- All future price changes with icons (📈 RAISE, 📉 REDUCTION, 💰 NEW_BASIC_AMOUNT)
-- Default description from API
-- Ensures transparency for future pricing
+**Finion Pay API Endpoints**:
 
-**4. What's Included** (Comprehensive single section - NOT expandable)
-- **Included Modules**: List of all `includedModules` with descriptions
-- **Contract Terms**: Two-column grid with all term details:
-  - Cancellation Period (from `term.cancelationPeriod`)
-  - Extension Term (from `term.extensionTerm`)
-  - Contract Start Date (from `term.defaultContractStartDate`)
-  - Start Date of Use (from `term.defaultContractStartDateOfUse`, if different)
-  - Auto-Renewal (derived from `term.extensionType !== 'NONE'`)
-  - Cancellation Strategy (formatted from `term.cancelationStrategy`)
-- **Cancellation & Refund Policy**: Yellow warning box with bullets
-  - Cancellation period details
-  - Fee information
-  - Pro-rata refund policy
-- **Accepted Payment Methods**: Pills display of `allowedPaymentChoices`
-- **Footnote**: Legal/contractual comments if present
+1. **Payment Session**: `POST /v1/payments/user-session`
+   - Creates payment session with token
+   - **Amount format**: Decimal (e.g., 10.50 for €10.50, NOT 1050)
+   - Scope: `MEMBER_ACCOUNT` (recurring) or `ECOM` (one-time)
+   - Response: `{ token, tokenValidUntil, finionPayCustomerId }`
 
-**Removed Sections** (eliminated redundancy):
-- ❌ "Detailed Cost Breakdown" expandable - removed (price already in hero + timeline)
-- ❌ "Contract Terms" expandable - removed (consolidated into "What's Included")
-- ❌ Duplicate timeline entries - hidden when price doesn't change
+2. **Membership Offers**: `GET /v1/memberships/membership-offers`
+   - Lists all available membership offers
+   - Response: Array of offer objects with pricing and terms
 
-**API Data Sources**: Uses `/v1/memberships/membership-offers/{membershipOfferId}` endpoint:
+3. **Offer Details**: `GET /v1/memberships/membership-offers/{membershipOfferId}`
+   - Detailed offer information
+   - Contains `terms[0]` with pricing breakdown
+   - **Price location**: `terms[0].paymentFrequency.price` (primary) or `terms[0].rateStartPrice` (fallback)
+
+4. **Signup Preview**: `POST /v1/memberships/signup/preview`
+   - Validates vouchers and calculates final pricing
+   - Returns discounts, flat fees, and `dueOnSigningAmount`
+   - Used for real-time price updates during form entry
+
+5. **Signup Submission**: `POST /v1/memberships/signup`
+   - Final contract creation
+   - Requires: member info, selected offer, payment tokens
+   - **Two payment tokens**:
+     - `customer.paymentRequestToken` - Recurring payment method
+     - `contract.initialPaymentRequestToken` - Upfront payment
+
+**Authentication**: All requests require `X-API-KEY` header with valid API key.
+
+### Contract Flow - 6-Step Process
+
+**Location**: `src/routes/contract-flow/+page.svelte`
+
+**Components**:
+- `Step1OfferSelection.svelte` - Browse and select offers
+- `Step2OfferDetails.svelte` - View detailed offer information
+- `Step3PersonalInfo.svelte` - Collect member details
+- `Step4RecurringPayment.svelte` - Set up recurring payment method
+- `Step5InitialPayment.svelte` - Process upfront fees
+- `Step6Review.svelte` - Final review and submission
+- `ContractSummary.svelte` - Live pricing summary (sidebar)
+
+**State Management**:
+- Reactive Svelte stores for global state
+- Session storage for form persistence (1-hour TTL)
+- Auto-save on field changes (debounced)
+
+**Smart Payment Detection**:
+The flow automatically detects which payment steps are needed:
+
+```javascript
+const needsRecurring = offer?.allowedPaymentChoices?.length > 0;
+const needsUpfront = dueOnSigningAmount > 0;
+
+// Skip Step 4 if no recurring payment needed
+// Skip Step 5 if no upfront payment needed
+// Show both if both are needed
+```
+
+**Two Payment Tokens**:
+- **Step 4** creates `recurringToken` (MEMBER_ACCOUNT scope, amount: 0)
+- **Step 5** creates `upfrontToken` (ECOM scope, amount: dueOnSigningAmount)
+- **Step 6** submits both tokens in correct fields
+
+**Critical**: Never use the same token for both payment types. The API requires:
+- `customer.paymentRequestToken` = recurring token (monthly payments)
+- `contract.initialPaymentRequestToken` = upfront token (initial fees)
+
+### Membership Offer Pricing Display
+
+**Step 2: Offer Details** implements comprehensive pricing display:
+
+**Components**:
+1. **Hero Cost Summary** - Prominent card with monthly price, setup fees, total contract value
+2. **Contract Timeline** - Visual timeline with promotional periods, initial term, extension
+   - Intelligently hides extension period if price doesn't change
+   - Uses `priceChangesAfterInitialTerm` check to prevent duplication
+3. **Price Adjustments** - Future price changes (if configured)
+4. **What's Included** - Comprehensive single section with:
+   - Included modules
+   - Contract terms (cancellation, extension, dates)
+   - Cancellation & refund policy
+   - Accepted payment methods
+
+**Price Formatting**:
+- Use `formatCurrencyDecimal()` for API decimal values
+- API returns: `{ amount: 10.50, currency: "EUR" }`
+- Display: "€10.50"
+
+**Data Sources**:
 - `terms[0].paymentFrequency.price` - Primary price location
-- `terms[0].rateStartPrice` - Fallback price location
+- `terms[0].rateStartPrice` - Fallback price
 - `terms[0].contractVolumeInformation` - Total and average costs
 - `terms[0].rateBonusPeriods` - Promotional periods
 - `terms[0].priceAdjustmentRules` - Future price changes
-- `terms[0].flatFees` - One-time setup costs
-- `terms[0].cancelationPeriod`, `extensionTerm`, `cancelationStrategy` - Contract terms
-- `allowedPaymentChoices` - Payment methods
+- `terms[0].flatFees` - Setup/registration fees
+- `allowedPaymentChoices` - Payment methods from API response
 
-**Benefits**:
-- ✅ **No redundancy** - Each piece of information appears exactly once
-- ✅ **Cleaner layout** - Less vertical space, easier to scan
-- ✅ **Intelligent condensing** - Timeline adapts based on actual price changes
-- ✅ **Single source of truth** - "What's Included" is comprehensive
-- ✅ **Proper price location** - Uses `paymentFrequency.price` per API structure
-- ✅ **Better UX** - Users don't see duplicate €10.00/mo three times
+### Session Persistence
 
-## Widget Configuration
+**Contract Flow State**: Saved to `sessionStorage` under `contractFlowState` key.
 
-**Required Parameters**:
-- `userSessionToken`: User authentication token from API (contains payment amount and session details)
-- `container`: DOM element ID or HTMLElement for widget mounting (set to 'payment-widget-container')
-- `countryCode`: ISO country code (DE, US, GB, CH, FR, IT, ES, NL, BE, AT)
-- `locale`: Language locale (en, en-US, en-GB, de-DE, fr-FR, it-IT, es-ES, nl-NL)
+**Structure**:
+```javascript
+{
+  selectedOffer: { ... },
+  memberInfo: { ... },
+  recurringToken: string,
+  upfrontToken: string,
+  timestamp: number, // For TTL validation
+  currentStep: number
+}
+```
 
-**Optional Parameters**:
-- `environment`: 'test', 'sandbox' (default), or 'live'
-- `styling`: Custom theme colors and styling object
-- `i18n`: Translation overrides object
-- `onSuccess`: Success callback function receiving (paymentRequestToken, paymentInstrumentDetails)
-- `onError`: Error callback function receiving error object
-- `devMode`: Show i18n keys instead of translated text (development only)
+**Auto-save**: Triggered on form field changes (debounced 500ms)
 
-**Note**: `amount` and `currency` are no longer required in widget config as they are handled by the user session token.
+**TTL**: 1 hour - state expires after inactivity
 
-## Widget Integration Flow
-
-1. Configure API credentials and session parameters (including amount)
-2. Create payment session via API call
-3. Receive and store session token (contains amount and payment details)
-4. Configure widget mounting parameters (country, environment, locale, styling, i18n)
-5. Initialize widget with `window.paymentWidget.init(config)`
-6. Handle payment success/error callbacks with payment instrument details
-
-## Payment Instrument Details
-
-The `onSuccess` callback receives two parameters:
-1. `paymentRequestToken` (string): The payment authorization token
-2. `paymentInstrumentDetails` (object, optional): Details about the payment method used
-
-**PaymentInstrumentDetails Interface**:
-- `creditCard`: Brand, card holder, masked card number, expiry, issuer country
-- `sepa`: Bank account details (account holder, bank name, BIC, IBAN, signature)
-- `bacs`: Account holder, bank account number, sort code, mandate ID, direct debit PDF URL
-- `chDD`: Swiss Direct Debit bank account details
-- `lsvDD`: LSV Direct Debit bank account details
-- `ideal`: iDEAL issuer information
-- `banContactCard`: Bancontact card details (holder, masked number, expiry)
-- `paypal`: PayPal payment confirmation
-- `twint`: Twint payment confirmation
-- `cash`: Cash payment confirmation
-- `bankTransfer`: Bank transfer payment confirmation
-
-## UI/UX Features
-
-**Responsive Design**: Three-column layout on desktop, stacked on mobile
-**Visual Hierarchy**: Color-coded sections (blue, green, purple) with icons
-**Progressive Disclosure**: Form fields and buttons enable/disable based on state
-**Real-time Feedback**: Immediate validation and status updates
-**Accessibility**: Proper labeling, focus states, and keyboard navigation
+**Restoration**: Automatically loaded on page mount if valid
 
 ## Test Data
 
-The `test_data/` directory contains test payment credentials for automated testing:
+Located in `test_data/` directory:
 
-**cards.json**: Test credit/debit card numbers for various card brands and countries
-- American Express, Bancontact, Cartes Bancaires, China UnionPay, Dankort, Diners, Discover, JCB, Maestro, Mastercard, Visa, Visa Electron, V Pay
-- Each card includes: card number, expiry date, CVC, issuer country
-- Some cards support 3D Secure authentication (marked with `secure3DS: true`)
-- Test data format: `{ "cardnumber": "4111 1111 1111 1111", "expiry": "03/30", "CVC": "737", "country": "NL" }`
+- **cards.json**: Test credit/debit card numbers for all major brands
+  - Format: `{ cardnumber, expiry, CVC, country, secure3DS? }`
+  - Includes Visa, Mastercard, Amex, Bancontact, iDEAL, etc.
 
-**ibans.json**: Test IBAN bank account numbers for SEPA Direct Debit
-- 13 test German IBANs with corresponding BIC codes and bank names
-- Test data format: `{ "iban": "DE02...", "bic": "...", "bank": "..." }`
+- **ibans.json**: Test IBAN accounts for SEPA Direct Debit
+  - Format: `{ iban, bic, bank }`
+  - 13 German test accounts
 
-**bacs_dd.json**: Test BACS Direct Debit account for UK payments
-- Account name: David Archer
-- Account number: 09083055
-- Sort code: 560036
+- **bacs_dd.json**: Test BACS Direct Debit for UK
+  - Account: David Archer, 09083055, 560036
+
+## Component Architecture
+
+### Svelte 5 Runes API
+
+This project uses Svelte 5 with the new Runes API:
+
+```svelte
+<script>
+  // Reactive state with $state
+  let count = $state(0);
+
+  // Derived state with $derived
+  let doubled = $derived(count * 2);
+
+  // Effects with $effect
+  $effect(() => {
+    console.log(`Count is now: ${count}`);
+  });
+
+  // Props with $props
+  let { title, onSubmit } = $props();
+</script>
+```
+
+### Component Best Practices
+
+1. **Props validation**: Use TypeScript-style JSDoc for prop types
+2. **Events**: Use callback props instead of `createEventDispatcher`
+3. **State**: Prefer local component state, use stores for global state
+4. **Lifecycle**: Use `$effect` for side effects, `onMount` for initialization
+5. **Cleanup**: Always cleanup subscriptions and event listeners
+
+### Styling
+
+**TailwindCSS Utilities**: Use utility classes for most styling
+
+**DaisyUI Components**: Use for buttons, cards, modals, forms
+
+**Custom Styles**: Use `<style>` blocks for component-specific styles
+
+**Theme**: Currently using "corporate" theme from DaisyUI
+
+**Responsive**: Mobile-first approach with `sm:`, `md:`, `lg:` breakpoints
+
+## Common Patterns
+
+### API Calls with Error Handling
+
+```javascript
+async function fetchData() {
+  const config = GlobalConfig.load();
+
+  if (!config.apiKey || !config.baseUrl) {
+    console.error('API configuration missing');
+    return;
+  }
+
+  try {
+    const response = await fetch(`${config.baseUrl}/v1/endpoint`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-KEY': config.apiKey
+      },
+      body: JSON.stringify(requestData)
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'API request failed');
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('API Error:', error);
+    // Handle error appropriately
+  }
+}
+```
+
+### Form Validation
+
+```javascript
+function validateEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function validateDateOfBirth(dob) {
+  const birthDate = new Date(dob);
+  const today = new Date();
+  const age = today.getFullYear() - birthDate.getFullYear();
+  return age >= 16; // Minimum age requirement
+}
+```
+
+### Currency Formatting
+
+```javascript
+// For API decimal values (e.g., 10.50)
+export function formatCurrencyDecimal(value, currency = 'EUR') {
+  if (typeof value === 'object' && value.amount !== undefined) {
+    return formatCurrencyDecimal(value.amount, value.currency);
+  }
+
+  return new Intl.NumberFormat('de-DE', {
+    style: 'currency',
+    currency: currency
+  }).format(value);
+}
+
+// For cent values (e.g., 1050 = €10.50)
+export function formatCurrency(cents, currency = 'EUR') {
+  return formatCurrencyDecimal(cents / 100, currency);
+}
+```
+
+## Debugging
+
+**Browser Console**: Check for JavaScript errors and API responses
+
+**Network Tab**: Inspect API requests and responses
+
+**Svelte DevTools**: Use browser extension for component inspection
+
+**Debug Logging**: Add `console.log` statements in components
+
+**Test Mode**: Use `environment: 'test'` for payment widget testing
+
+## Deployment
+
+**Build Command**: `npm run build`
+
+**Output**: `build/` directory with static files
+
+**Adapter**: `@sveltejs/adapter-static` configured in `svelte.config.js`
+
+**Hosting Options**:
+- Vercel (recommended)
+- Netlify
+- GitHub Pages
+- Any static hosting service
+
+**Environment Variables**: Set API credentials via environment variables in production (not hardcoded)
+
+## Critical Implementation Notes
+
+### Payment Session Amount Format
+
+**CRITICAL**: The `/v1/payments/user-session` endpoint expects **decimal format**, not cents.
+
+```javascript
+// ❌ WRONG - Don't multiply by 100
+const requestBody = {
+  amount: Math.round(10.50 * 100), // 1050 - INCORRECT!
+  scope: "ECOM"
+};
+
+// ✅ CORRECT - Use decimal directly
+const requestBody = {
+  amount: 10.50, // Decimal format
+  scope: "ECOM"
+};
+```
+
+**Why this matters**: The API interprets the value as-is. Sending 1050 will charge €1050.00 instead of €10.50.
+
+### Two Payment Tokens Required
+
+The contract submission requires **two separate payment tokens**:
+
+1. **Recurring Payment Token** (MEMBER_ACCOUNT scope, amount: 0)
+   - Stores payment method for future monthly charges
+   - Field: `customer.paymentRequestToken`
+   - Created in Step 4
+
+2. **Upfront Payment Token** (ECOM scope, actual amount)
+   - Processes immediate payment for setup fees
+   - Field: `contract.initialPaymentRequestToken`
+   - Created in Step 5
+
+**Never use the same token for both fields**. Each payment widget session creates a unique token tied to its scope and amount.
+
+### Contract Flow Payment Integration
+
+When creating payment sessions in the contract flow:
+
+- **MEMBER_ACCOUNT scope**: Uses `allowedPaymentChoices` from the selected membership offer
+- **ECOM scope**: Restricts to one-time payment methods only (CREDIT_CARD, PAYPAL, TWINT, IDEAL, BANCONTACT)
+- All payment choices from offer are passed, including CASH and BANK_TRANSFER
+- Fallback defaults: SEPA, BACS, CREDIT_CARD, CASH, BANK_TRANSFER
+
+**Implementation**: Step 4 and Step 5 components handle payment token creation separately.
+
+## Security Considerations
+
+1. **API Keys**: Never commit API keys to version control
+2. **Session Tokens**: Short-lived, stored only in memory or sessionStorage
+3. **Payment Data**: Never stored locally, handled entirely by widget
+4. **HTTPS**: Always use HTTPS in production
+5. **Input Validation**: Validate all user inputs before API submission
+6. **XSS Prevention**: Svelte automatically escapes content, but be careful with `{@html}`
+
+---
+
+## Deprecations and Removed Features
+
+### Old HTML/JS Implementation Removed (2025-10-14)
+
+The following files were removed as part of the Svelte migration:
+- `index.html` - Old payment widget test page
+- `script.js` - Old widget test logic
+- `styles.css` - Old custom styles
+- `config.js` - Old centralized configuration
+- `nav.js` - Old navigation system
+- `contract-flow.html` - Original 7-step contract flow
+- `contract-flow-steps.js` - Original contract flow logic
+- `contract-flow-app.js` - Legacy contract flow code
+- `contract-flow-optimized.html` - Intermediate 4-step optimized flow
+- `contract-flow-optimized.js` - Optimized flow logic
+
+**Accessing Old Implementation**: The old HTML/JS implementation is preserved in git history under the tag `old-html-flow-final`.
+
+```bash
+# To view old implementation:
+git checkout old-html-flow-final
+```
+
+**Migration Rationale**:
+- Modern component architecture
+- Better maintainability and code organization
+- Improved developer experience with hot reload
+- Proper build pipeline with optimizations
+- Mobile-first responsive design
+- Reusable component library
+
+---
+
+*End of documentation.*

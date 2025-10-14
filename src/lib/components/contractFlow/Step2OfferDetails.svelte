@@ -3,7 +3,7 @@
 	import { contractFlowStore } from '$lib/stores/contractFlow.js';
 	import { configStore } from '$lib/stores/config.js';
 	import { ContractFlowApi } from '$lib/api/contractFlow.js';
-	import { formatCurrencyDecimal, formatDuration, parsePaymentFrequency } from '$lib/utils/format.js';
+	import { formatCurrencyDecimal, formatDuration, parsePaymentFrequency, extractPrice } from '$lib/utils/format.js';
 	import Card from '$lib/components/ui/Card.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Alert from '$lib/components/ui/Alert.svelte';
@@ -167,6 +167,7 @@
 	$: isTermBased = paymentType === 'TERM_BASED' || paymentType === 'NON_RECURRING';
 
 	// Use preview data if available, otherwise fall back to offer data
+	// Keep as price object to preserve currency information
 	$: price = (() => {
 		if (preview?.ageAdjustedPrice !== null && preview?.ageAdjustedPrice !== undefined) {
 			return preview.ageAdjustedPrice;
@@ -178,46 +179,39 @@
 			return preview.basePrice;
 		}
 
-		// Fallback to offer data
+		// Fallback to offer data (keep as price object with currency)
 		if (!term) return 0;
 		if (isTermBased && term.paymentFrequency?.termsToPrices?.length > 0) {
-			const termsPrice = term.paymentFrequency.termsToPrices[0].price;
-			return typeof termsPrice === 'object' ? termsPrice.amount : termsPrice;
+			return term.paymentFrequency.termsToPrices[0].price;
 		}
 		if (term.paymentFrequency?.price) {
-			return typeof term.paymentFrequency.price === 'object'
-				? term.paymentFrequency.price.amount
-				: term.paymentFrequency.price;
+			return term.paymentFrequency.price;
 		}
 		if (term.rateStartPrice) {
-			return typeof term.rateStartPrice === 'object'
-				? term.rateStartPrice.amount
-				: term.rateStartPrice;
+			return term.rateStartPrice;
 		}
 		return 0;
 	})();
 
 	$: flatFees = preview?.flatFeePreviews || term?.flatFees || [];
 
-	// Use preview data for "Due Today" if available
+	// Use preview data for "Due Today" if available (keep as price object)
 	$: totalDueToday = (() => {
 		if (preview?.paymentPreview?.dueOnSigningAmount) {
-			const amount = preview.paymentPreview.dueOnSigningAmount;
-			return typeof amount === 'object' ? amount.amount : amount;
+			return preview.paymentPreview.dueOnSigningAmount;
 		}
 
-		// Fallback calculation
-		const totalFlatFees = flatFees.reduce((sum, fee) => {
-			const feeAmount = typeof fee.paymentFrequency?.price === 'object'
-				? fee.paymentFrequency.price.amount
-				: (fee.paymentFrequency?.price || fee.discountedPrice || 0);
-			return sum + feeAmount;
+		// Fallback calculation - need to extract amounts for arithmetic
+		const { amount: priceAmount } = extractPrice(price);
+		const totalFlatFeesAmount = flatFees.reduce((sum, fee) => {
+			const { amount } = extractPrice(fee.paymentFrequency?.price || fee.discountedPrice || 0);
+			return sum + amount;
 		}, 0);
 
 		if (isRecurring) {
-			return totalFlatFees;
+			return totalFlatFeesAmount;
 		} else if (isTermBased) {
-			return price + totalFlatFees;
+			return priceAmount + totalFlatFeesAmount;
 		}
 		return 0;
 	})();
@@ -228,8 +222,7 @@
 			return preview.contractVolumeInformation.totalContractVolume;
 		}
 		if (!term?.contractVolumeInformation?.totalContractVolume) return 0;
-		const total = term.contractVolumeInformation.totalContractVolume;
-		return typeof total === 'object' ? total.amount : total;
+		return term.contractVolumeInformation.totalContractVolume;
 	})();
 
 	function handleTermSelect(termId) {
@@ -357,28 +350,22 @@
 		contractFlowStore.previousStep();
 	}
 
-	// Helper to get term price for display
+	// Helper to get term price for display (keep as price object)
 	function getTermPrice(t) {
 		if (t.paymentFrequency?.price) {
-			return typeof t.paymentFrequency.price === 'object'
-				? t.paymentFrequency.price.amount
-				: t.paymentFrequency.price;
+			return t.paymentFrequency.price;
 		}
 		if (t.rateStartPrice) {
-			return typeof t.rateStartPrice === 'object'
-				? t.rateStartPrice.amount
-				: t.rateStartPrice;
+			return t.rateStartPrice;
 		}
 		return 0;
 	}
 
-	// Helper to get term flat fees total
+	// Helper to get term flat fees total (extract amounts for calculation)
 	function getTermFlatFeesTotal(t) {
 		return (t.flatFees || []).reduce((sum, fee) => {
-			const feeAmount = typeof fee.paymentFrequency?.price === 'object'
-				? fee.paymentFrequency.price.amount
-				: (fee.paymentFrequency?.price || 0);
-			return sum + feeAmount;
+			const { amount } = extractPrice(fee.paymentFrequency?.price || 0);
+			return sum + amount;
 		}, 0);
 	}
 </script>
@@ -388,7 +375,7 @@
 	<div class="contract-flow-layout">
 		<!-- Main Form Column -->
 		<div class="form-column">
-	<Card title="Mitgliedschaftsdetails">
+	<Card title="Membership Details">
 		{#if offer && term}
 			<!-- Preview Error Alert -->
 			{#if previewError}
@@ -465,7 +452,7 @@
 			{/if}
 
 			<!-- Contract Configuration Fields -->
-			<div class="bg-base-200 rounded-lg p-4 mb-6">
+			<div class="bg-base-200 rounded-lg p-6 mb-6">
 				<h3 class="font-bold text-lg mb-4">📋 Vertragsdetails</h3>
 
 				<div class="space-y-4">
@@ -525,7 +512,7 @@
 			</div>
 
 			<!-- Personal Information Section -->
-			<div class="bg-base-200 rounded-lg p-4">
+			<div class="bg-base-200 rounded-lg p-6 mb-6">
 				<div class="flex items-center justify-between mb-4">
 					<h3 class="font-bold text-lg">👤 Persönliche Informationen</h3>
 					<button type="button" class="btn btn-ghost btn-sm" on:click={fillTestData}>
@@ -582,7 +569,7 @@
 			</div>
 
 			<!-- Address Section -->
-			<div class="bg-base-200 rounded-lg p-4">
+			<div class="bg-base-200 rounded-lg p-6 mb-6">
 				<h3 class="font-bold text-lg mb-4">📍 Adresse</h3>
 
 				<div class="space-y-4">
@@ -719,19 +706,17 @@
 		display: flex;
 		gap: 2rem;
 		align-items: flex-start;
-		max-width: 1600px;
-		margin: 0 auto;
-		padding: 0 2rem;
 	}
 
 	.form-column {
-		flex: 1 1 65%;
+		flex: 2;
 		min-width: 0;
 	}
 
 	.summary-column {
-		flex: 0 0 35%;
-		max-width: 480px;
+		flex: 1;
+		max-width: 400px;
+		min-width: 320px;
 		position: sticky;
 		top: 1.5rem;
 		align-self: flex-start;
@@ -745,6 +730,7 @@
 
 		.summary-column {
 			position: static;
+			max-width: 100%;
 			width: 100%;
 			order: -1;
 			margin-bottom: 1.5rem;

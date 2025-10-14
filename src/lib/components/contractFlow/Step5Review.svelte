@@ -2,7 +2,7 @@
 	import { contractFlowStore } from '$lib/stores/contractFlow.js';
 	import { configStore } from '$lib/stores/config.js';
 	import { ContractFlowApi } from '$lib/api/contractFlow.js';
-	import { formatCurrencyDecimal, parsePaymentFrequency, formatDuration, formatDate } from '$lib/utils/format.js';
+	import { formatCurrencyDecimal, parsePaymentFrequency, formatDuration, formatDate, extractPrice } from '$lib/utils/format.js';
 	import Card from '$lib/components/ui/Card.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Alert from '$lib/components/ui/Alert.svelte';
@@ -16,18 +16,13 @@
 	$: price = (() => {
 		if (!term) return 0;
 		if (term.paymentFrequency?.price) {
-			return typeof term.paymentFrequency.price === 'object'
-				? term.paymentFrequency.price.amount
-				: term.paymentFrequency.price;
+			return term.paymentFrequency.price;
 		}
 		if (term.paymentFrequency?.termsToPrices?.length > 0) {
-			const termsPrice = term.paymentFrequency.termsToPrices[0].price;
-			return typeof termsPrice === 'object' ? termsPrice.amount : termsPrice;
+			return term.paymentFrequency.termsToPrices[0].price;
 		}
 		if (term.rateStartPrice) {
-			return typeof term.rateStartPrice === 'object'
-				? term.rateStartPrice.amount
-				: term.rateStartPrice;
+			return term.rateStartPrice;
 		}
 		return 0;
 	})();
@@ -235,7 +230,7 @@
 		</div>
 
 		<!-- Navigation -->
-		<div class="flex justify-between mt-8 pt-6 border-t">
+		<div class="flex justify-between mt-6 pt-6 border-t">
 			<Button variant="secondary" on:click={handleBack} disabled={loading}>
 				← Back to Payment
 			</Button>

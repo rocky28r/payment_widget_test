@@ -1,5 +1,5 @@
 <script>
-	import { formatCurrencyDecimal, parsePaymentFrequency, formatDuration } from '$lib/utils/format.js';
+	import { formatCurrencyDecimal, parsePaymentFrequency, formatDuration, extractPrice } from '$lib/utils/format.js';
 	import { contractFlowStore } from '$lib/stores/contractFlow.js';
 	import Card from '$lib/components/ui/Card.svelte';
 
@@ -18,20 +18,15 @@
 		if (!term) return 0;
 		// For term-based/prepaid: use termsToPrices for upfront cost
 		if (isTermBased && term.paymentFrequency?.termsToPrices?.length > 0) {
-			const termsPrice = term.paymentFrequency.termsToPrices[0].price;
-			return typeof termsPrice === 'object' ? termsPrice.amount : termsPrice;
+			return term.paymentFrequency.termsToPrices[0].price;
 		}
 		// For recurring: use paymentFrequency.price
 		if (term.paymentFrequency?.price) {
-			return typeof term.paymentFrequency.price === 'object'
-				? term.paymentFrequency.price.amount
-				: term.paymentFrequency.price;
+			return term.paymentFrequency.price;
 		}
 		// Fallback to rateStartPrice
 		if (term.rateStartPrice) {
-			return typeof term.rateStartPrice === 'object'
-				? term.rateStartPrice.amount
-				: term.rateStartPrice;
+			return term.rateStartPrice;
 		}
 		return 0;
 	})();
@@ -40,27 +35,25 @@
 	$: flatFees = term?.flatFees || [];
 
 	$: totalFlatFees = flatFees.reduce((sum, fee) => {
-		const feeAmount = typeof fee.paymentFrequency?.price === 'object'
-			? fee.paymentFrequency.price.amount
-			: (fee.paymentFrequency?.price || 0);
-		return sum + feeAmount;
+		const { amount } = extractPrice(fee.paymentFrequency?.price || 0);
+		return sum + amount;
 	}, 0);
 
 	// FR2.2 & FR2.3: Calculate Total Due Today
 	$: totalDueToday = (() => {
 		// Use preview data if available
 		if (preview?.paymentPreview?.dueOnSigningAmount) {
-			const amount = preview.paymentPreview.dueOnSigningAmount;
-			return typeof amount === 'object' ? amount.amount : amount;
+			return preview.paymentPreview.dueOnSigningAmount;
 		}
 
 		// Fallback calculation
+		const { amount: priceAmount } = extractPrice(price);
 		if (isRecurring) {
 			// Recurring: only flat fees due today
 			return totalFlatFees;
 		} else if (isTermBased) {
 			// Term-based: upfront cost + flat fees
-			return price + totalFlatFees;
+			return priceAmount + totalFlatFees;
 		}
 		return 0;
 	})();
@@ -129,12 +122,9 @@
 								<p class="text-xs font-semibold text-gray-700 mb-2">Einmalige Gebühren:</p>
 								<div class="space-y-1">
 									{#each flatFees as fee}
-										{@const feeAmount = typeof fee.paymentFrequency?.price === 'object'
-											? fee.paymentFrequency.price.amount
-											: (fee.paymentFrequency?.price || 0)}
 										<div class="flex justify-between text-sm">
 											<span class="text-gray-600">{fee.name}:</span>
-											<span class="font-semibold">{formatCurrencyDecimal(feeAmount)}</span>
+											<span class="font-semibold">{formatCurrencyDecimal(fee.paymentFrequency?.price || 0)}</span>
 										</div>
 									{/each}
 								</div>
@@ -157,10 +147,9 @@
 								<p class="text-sm font-semibold text-gray-700 mb-3">📅 Zahlungsplan:</p>
 								<div class="space-y-2 max-h-40 overflow-y-auto">
 									{#each paymentSchedule.slice(0, 5) as payment, idx}
-										{@const amount = typeof payment.amount === 'object' ? payment.amount.amount : payment.amount}
 										<div class="flex justify-between text-sm {idx === 0 ? 'text-gray-900 font-semibold' : 'text-gray-600'}">
 											<span>{new Date(payment.dueDate).toLocaleDateString('de-DE', { month: 'short', year: 'numeric' })}</span>
-											<span>{formatCurrencyDecimal(amount)}</span>
+											<span>{formatCurrencyDecimal(payment.amount)}</span>
 										</div>
 									{/each}
 									{#if paymentSchedule.length > 5}
@@ -189,12 +178,9 @@
 								<p class="text-xs font-semibold text-gray-700 mb-2">Einmalige Gebühren:</p>
 								<div class="space-y-1">
 									{#each flatFees as fee}
-										{@const feeAmount = typeof fee.paymentFrequency?.price === 'object'
-											? fee.paymentFrequency.price.amount
-											: (fee.paymentFrequency?.price || 0)}
 										<div class="flex justify-between text-sm">
 											<span class="text-gray-600">{fee.name}:</span>
-											<span class="font-semibold">{formatCurrencyDecimal(feeAmount)}</span>
+											<span class="font-semibold">{formatCurrencyDecimal(fee.paymentFrequency?.price || 0)}</span>
 										</div>
 									{/each}
 								</div>

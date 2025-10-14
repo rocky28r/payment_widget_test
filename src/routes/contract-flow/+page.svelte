@@ -81,7 +81,7 @@
 
 	<!-- Main Content -->
 	<div class="container mx-auto px-4 py-8">
-		<div class="max-w-4xl mx-auto">
+		<div class="max-w-6xl mx-auto">
 			<!-- Step 1: Offer Selection -->
 			{#if currentStep === 1}
 				<Step1OfferSelection />

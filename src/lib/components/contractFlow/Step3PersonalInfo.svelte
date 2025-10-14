@@ -140,7 +140,7 @@
 
 		<form on:submit|preventDefault={handleNext} class="space-y-6">
 			<!-- Personal Information Section -->
-			<div class="bg-base-200 rounded-lg p-4">
+			<div class="bg-base-200 rounded-lg p-6">
 				<div class="flex items-center justify-between mb-4">
 					<h3 class="font-bold text-lg">Personal Information</h3>
 					<button type="button" class="btn btn-ghost btn-sm" on:click={fillTestData}>
@@ -186,7 +186,7 @@
 			</div>
 
 			<!-- Address Section -->
-			<div class="bg-base-200 rounded-lg p-4">
+			<div class="bg-base-200 rounded-lg p-6">
 				<h3 class="font-bold text-lg mb-4">Address</h3>
 
 				<div class="space-y-4">
@@ -245,7 +245,7 @@
 			</div>
 
 			<!-- Actions -->
-			<div class="flex justify-between pt-6 border-t">
+			<div class="flex justify-between mt-6 pt-6 border-t">
 				<Button type="button" variant="secondary" on:click={handleBack} disabled={previewLoading}>
 					← Back
 				</Button>

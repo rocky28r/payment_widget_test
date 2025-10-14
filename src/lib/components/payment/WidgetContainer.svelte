@@ -61,8 +61,16 @@
 	}
 
 	onDestroy(() => {
-		if (widgetInstance) {
-			widgetInstance.destroy().catch((e) => console.error('Error destroying widget:', e));
+		if (widgetInstance && widgetInstance.destroy) {
+			try {
+				const destroyResult = widgetInstance.destroy();
+				// Only call .catch() if destroy() returns a Promise
+				if (destroyResult && typeof destroyResult.catch === 'function') {
+					destroyResult.catch((e) => console.error('Error destroying widget:', e));
+				}
+			} catch (e) {
+				console.error('Error destroying widget:', e);
+			}
 		}
 	});
 

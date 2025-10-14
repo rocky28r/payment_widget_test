@@ -3,7 +3,7 @@
 	import { contractFlowStore } from '$lib/stores/contractFlow.js';
 	import { configStore } from '$lib/stores/config.js';
 	import { ContractFlowApi } from '$lib/api/contractFlow.js';
-	import { formatCurrencyDecimal, parsePaymentFrequency, formatDuration } from '$lib/utils/format.js';
+	import { formatCurrencyDecimal, parsePaymentFrequency, formatDuration, extractPrice } from '$lib/utils/format.js';
 	import Card from '$lib/components/ui/Card.svelte';
 	import Alert from '$lib/components/ui/Alert.svelte';
 
@@ -70,20 +70,15 @@
 							{@const getPrice = () => {
 								// For term-based/prepaid: use termsToPrices for upfront cost
 								if (isTermBased && term.paymentFrequency?.termsToPrices?.length > 0) {
-									const termsPrice = term.paymentFrequency.termsToPrices[0].price;
-									return typeof termsPrice === 'object' ? termsPrice.amount : termsPrice;
+									return term.paymentFrequency.termsToPrices[0].price;
 								}
 								// For recurring: use paymentFrequency.price
 								if (term.paymentFrequency?.price) {
-									return typeof term.paymentFrequency.price === 'object'
-										? term.paymentFrequency.price.amount
-										: term.paymentFrequency.price;
+									return term.paymentFrequency.price;
 								}
 								// Fallback to rateStartPrice
 								if (term.rateStartPrice) {
-									return typeof term.rateStartPrice === 'object'
-										? term.rateStartPrice.amount
-										: term.rateStartPrice;
+									return term.rateStartPrice;
 								}
 								return 0;
 							}}
@@ -92,10 +87,8 @@
 							{@const contractTerm = term.initialTerm}
 							{@const flatFees = term.flatFees || []}
 							{@const totalFlatFees = flatFees.reduce((sum, fee) => {
-								const feeAmount = typeof fee.paymentFrequency?.price === 'object'
-									? fee.paymentFrequency.price.amount
-									: (fee.paymentFrequency?.price || 0);
-								return sum + feeAmount;
+								const { amount } = extractPrice(fee.paymentFrequency?.price || 0);
+								return sum + amount;
 							}, 0)}
 
 							<div class="mt-4 pt-4 border-t">
@@ -128,7 +121,8 @@
 											</div>
 										{/if}
 										{#if contractTerm?.value && price > 0}
-											{@const effectiveMonthly = price / contractTerm.value}
+											{@const { amount: priceAmount } = extractPrice(price)}
+											{@const effectiveMonthly = priceAmount / contractTerm.value}
 											<div class="text-gray-400 text-xs mt-1">
 												entspricht {formatCurrencyDecimal(effectiveMonthly)}/Monat
 											</div>

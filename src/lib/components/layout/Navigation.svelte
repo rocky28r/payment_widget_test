@@ -50,15 +50,14 @@
 			<!-- Navigation Links -->
 			<div class="flex items-center space-x-4">
 				{#each routes as route}
-					{@const isActive = isRouteActive(route)}
 					<a
 						href={route.path}
 						class="px-4 py-2 rounded-md transition"
-						class:bg-blue-50={isActive}
-						class:text-blue-600={isActive}
-						class:font-semibold={isActive}
-						class:text-gray-700={!isActive}
-						class:hover:bg-blue-50={!isActive}
+						class:bg-blue-50={isRouteActive(route)}
+						class:text-blue-600={isRouteActive(route)}
+						class:font-semibold={isRouteActive(route)}
+						class:text-gray-700={!isRouteActive(route)}
+						class:hover:bg-blue-50={!isRouteActive(route)}
 					>
 						{route.label}
 					</a>
