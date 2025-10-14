@@ -68,6 +68,9 @@ function createContractFlowStore() {
 		recurringSessionToken: null,
 		upfrontSessionToken: null,
 
+		// Finion Pay customer ID (shared across both payment widgets)
+		finionPayCustomerId: null,
+
 		// Contract submission
 		contractId: null,
 		contractNumber: null,
@@ -143,6 +146,9 @@ function createContractFlowStore() {
 		// Payment session tokens (for widget remount)
 		setRecurringSessionToken: (sessionToken) => update(state => ({ ...state, recurringSessionToken: sessionToken })),
 		setUpfrontSessionToken: (sessionToken) => update(state => ({ ...state, upfrontSessionToken: sessionToken })),
+
+		// Finion Pay customer ID
+		setFinionPayCustomerId: (customerId) => update(state => ({ ...state, finionPayCustomerId: customerId })),
 
 		// Contract
 		setContract: (contractId, contractNumber) => update(state => ({

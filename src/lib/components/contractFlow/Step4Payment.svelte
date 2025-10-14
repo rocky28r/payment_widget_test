@@ -187,6 +187,12 @@
 			// Store session token for later remount
 			contractFlowStore.setRecurringSessionToken(session.token);
 
+			// Store Finion Pay customer ID for upfront payment session
+			if (session.finionPayCustomerId) {
+				contractFlowStore.setFinionPayCustomerId(session.finionPayCustomerId);
+				console.log('Stored finionPayCustomerId:', session.finionPayCustomerId);
+			}
+
 			// Check if paymentWidget is available
 			if (typeof window.paymentWidget === 'undefined') {
 				throw new Error('Payment widget library not loaded');
@@ -324,7 +330,20 @@
 				permittedPaymentChoices: ['CREDIT_CARD', 'PAYPAL', 'TWINT', 'IDEAL', 'BANCONTACT']
 			};
 
+			// Include finionPayCustomerId if available (from recurring payment)
+			const storedCustomerId = $contractFlowStore.finionPayCustomerId;
+			if (storedCustomerId) {
+				requestBody.finionPayCustomerId = storedCustomerId;
+				console.log('Using stored finionPayCustomerId for upfront payment:', storedCustomerId);
+			}
+
 			const session = await api.createPaymentSession(requestBody);
+
+			// If this is the first payment session (no stored customer ID), store it now
+			if (!storedCustomerId && session.finionPayCustomerId) {
+				contractFlowStore.setFinionPayCustomerId(session.finionPayCustomerId);
+				console.log('Stored finionPayCustomerId from upfront payment:', session.finionPayCustomerId);
+			}
 
 			// Store session token for later remount
 			contractFlowStore.setUpfrontSessionToken(session.token);
