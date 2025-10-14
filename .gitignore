@@ -13,6 +13,7 @@ TESTING_RESULTS.md
 .env.local
 .env.*.local
 *.key
+api_credentials.json
 
 # IDE & Editor Files
 .vscode/
@@ -22,12 +23,16 @@ TESTING_RESULTS.md
 *~
 .DS_Store
 
-# Node Modules (if project adds npm in future)
+# Node.js / SvelteKit
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 package-lock.json
+.svelte-kit/
+build/
+.vercel/
+vite.config.js.timestamp-*
 
 # Logs
 logs/

@@ -1,9 +1,0 @@
-body { 
-    font-family: 'Inter', sans-serif; 
-}
-
-/* Simple transition for visual feedback */
-.status-log-entry {
-    transition: opacity 0.5s ease-in-out;
-}
-

@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+	* {
+		font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+	}
+
+	body {
+		@apply bg-gray-50;
+		color: #212529;
+	}
+
+	h1, h2, h3, h4, h5, h6 {
+		color: #212529;
+	}
+}
+
+@layer components {
+	/* Card with soft shadow */
+	.card {
+		@apply shadow-soft;
+	}
+
+	/* Section headers */
+	.section-header {
+		@apply text-base font-semibold text-gray-900 mb-3;
+	}
+
+	/* Outline button style for secondary actions */
+	.btn-outline-primary {
+		@apply border-2 border-primary bg-transparent text-primary hover:bg-primary hover:text-white hover:border-primary transition-colors;
+	}
+
+	/* Input focus styles */
+	input:focus,
+	textarea:focus,
+	select:focus {
+		@apply border-primary ring-2 ring-primary ring-opacity-20;
+	}
+
+	/* Custom warning box */
+	.warning-box {
+		@apply bg-warning-50 border-l-4 border-warning p-4 rounded;
+	}
+
+	/* Success box */
+	.success-box {
+		@apply bg-success-50 border-l-4 border-success-500 p-4 rounded;
+	}
+}
