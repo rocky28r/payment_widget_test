@@ -188,3 +188,56 @@ export function formatDuration(duration) {
 
 	return `${years} ${years === 1 ? 'year' : 'years'} and ${remainingMonths} ${remainingMonths === 1 ? 'month' : 'months'}`;
 }
+
+/**
+ * Construct customer management URL from API base URL and customer ID
+ * Transforms: https://<tenant>.open-api.<base_url> -> https://<tenant>.web.<base_url>/#/customermanagement/<customerId>/overview
+ * Handles various environment prefixes: local, dev, sandbox, ref, prod (empty)
+ *
+ * @param {string} apiBaseUrl - API base URL (e.g., https://spadeanranzenberger.open-api.sandbox.magicline.com)
+ * @param {string} customerId - Customer ID from signup response
+ * @returns {string|null} - Customer management URL or null if parsing fails
+ *
+ * @example
+ * constructCustomerManagementUrl('https://spadeanranzenberger.open-api.sandbox.magicline.com', '12345')
+ * // Returns: 'https://spadeanranzenberger.web.sandbox.magicline.com/#/customermanagement/12345/overview'
+ *
+ * @example
+ * constructCustomerManagementUrl('https://tenant.open-api.magicline.com', '12345')
+ * // Returns: 'https://tenant.web.magicline.com/#/customermanagement/12345/overview'
+ */
+export function constructCustomerManagementUrl(apiBaseUrl, customerId) {
+	if (!apiBaseUrl || !customerId) return null;
+
+	try {
+		const url = new URL(apiBaseUrl);
+
+		// Extract hostname parts: tenant.open-api.sandbox.magicline.com
+		const hostnameParts = url.hostname.split('.');
+
+		// We need at least: tenant.open-api.domain.tld (4 parts minimum)
+		if (hostnameParts.length < 4) {
+			console.error('Invalid API URL format:', apiBaseUrl);
+			return null;
+		}
+
+		// Find the "open-api" part and replace with "web"
+		const openApiIndex = hostnameParts.findIndex(part => part === 'open-api');
+		if (openApiIndex === -1) {
+			console.error('Could not find "open-api" in hostname:', url.hostname);
+			return null;
+		}
+
+		// Replace "open-api" with "web"
+		hostnameParts[openApiIndex] = 'web';
+
+		// Reconstruct the URL
+		const webHostname = hostnameParts.join('.');
+		const webUrl = `${url.protocol}//${webHostname}/#/customermanagement/${customerId}/overview`;
+
+		return webUrl;
+	} catch (error) {
+		console.error('Failed to parse API base URL:', error);
+		return null;
+	}
+}
