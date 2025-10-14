@@ -1,5 +1,4 @@
 <script>
-	import { onMount } from 'svelte';
 	import { contractFlowStore } from '$lib/stores/contractFlow.js';
 	import { configStore } from '$lib/stores/config.js';
 	import { constructCustomerManagementUrl } from '$lib/utils/format.js';
@@ -13,14 +12,6 @@
 	$: customerManagementUrl = contractNumber
 		? constructCustomerManagementUrl($configStore.apiBaseUrl, contractNumber)
 		: null;
-
-	onMount(() => {
-		// Auto-clear session after 5 seconds
-		setTimeout(() => {
-			console.log('Clearing session after successful contract creation');
-			contractFlowStore.reset();
-		}, 5000);
-	});
 
 	function handleNewContract() {
 		contractFlowStore.reset();
