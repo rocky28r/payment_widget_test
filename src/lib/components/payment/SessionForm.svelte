@@ -14,7 +14,8 @@
 		referenceText: '',
 		customerId: '',
 		finionPayCustomerId: '',
-		permittedPaymentChoices: []
+		permittedPaymentChoices: [],
+		requireDirectDebitSignature: false
 	};
 
 	let errors = {};
@@ -26,6 +27,8 @@
 		{ value: 'CREDIT_CARD', label: 'Credit Card' },
 		{ value: 'SEPA', label: 'SEPA Direct Debit' },
 		{ value: 'BACS', label: 'BACS Direct Debit' },
+		{ value: 'CH_DD', label: 'CH Direct Debit' },
+		{ value: 'LSV', label: 'LSV' },
 		{ value: 'PAYPAL', label: 'PayPal' },
 		{ value: 'TWINT', label: 'Twint' },
 		{ value: 'IDEAL', label: 'iDEAL' },
@@ -83,7 +86,8 @@
 				...(formData.finionPayCustomerId && { finionPayCustomerId: formData.finionPayCustomerId }),
 				...(formData.permittedPaymentChoices.length > 0 && {
 					permittedPaymentChoices: formData.permittedPaymentChoices
-				})
+				}),
+				...(formData.requireDirectDebitSignature && { requireDirectDebitSignature: true })
 			};
 
 			console.log('Creating payment session:', requestBody);
@@ -187,6 +191,23 @@
 					</label>
 				{/each}
 			</div>
+		</div>
+
+		<!-- Direct Debit Signature -->
+		<div class="form-control">
+			<label class="cursor-pointer label justify-start">
+				<input
+					type="checkbox"
+					bind:checked={formData.requireDirectDebitSignature}
+					class="checkbox checkbox-primary"
+				/>
+				<span class="label-text ml-3">
+					<span class="font-semibold">Require Direct Debit Signature</span>
+					<span class="block text-xs text-gray-500 mt-1">
+						Shows a signature field for SEPA, CH_DD, and LSV payment methods
+					</span>
+				</span>
+			</label>
 		</div>
 
 		<div class="card-actions justify-end mt-6">
