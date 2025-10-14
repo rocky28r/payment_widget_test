@@ -117,12 +117,35 @@ export function parseExtensionType(type) {
 
 /**
  * Format duration in months to readable text
- * @param {number} months - Duration in months
+ * @param {number|object} duration - Duration in months, or object with {value, unit}
  * @returns {string} - Human readable duration
  */
-export function formatDuration(months) {
-	if (!months) return '—';
+export function formatDuration(duration) {
+	if (!duration) return '—';
 
+	// Handle object format {value: 12, unit: "MONTHS"}
+	if (typeof duration === 'object' && duration.value !== undefined) {
+		const value = duration.value;
+		const unit = duration.unit?.toLowerCase() || 'months';
+
+		// Convert to German units
+		const unitMap = {
+			'month': value === 1 ? 'Monat' : 'Monate',
+			'months': value === 1 ? 'Monat' : 'Monate',
+			'year': value === 1 ? 'Jahr' : 'Jahre',
+			'years': value === 1 ? 'Jahr' : 'Jahre',
+			'week': value === 1 ? 'Woche' : 'Wochen',
+			'weeks': value === 1 ? 'Woche' : 'Wochen',
+			'day': value === 1 ? 'Tag' : 'Tage',
+			'days': value === 1 ? 'Tag' : 'Tage'
+		};
+
+		const germanUnit = unitMap[unit] || unit;
+		return `${value} ${germanUnit}`;
+	}
+
+	// Handle number format (months)
+	const months = duration;
 	if (months === 1) return '1 Monat';
 	if (months < 12) return `${months} Monate`;
 	if (months === 12) return '1 Jahr';

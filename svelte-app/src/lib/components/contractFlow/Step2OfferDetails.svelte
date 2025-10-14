@@ -1,5 +1,5 @@
 <script>
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { contractFlowStore } from '$lib/stores/contractFlow.js';
 	import { configStore } from '$lib/stores/config.js';
 	import { ContractFlowApi } from '$lib/api/contractFlow.js';
@@ -7,118 +7,751 @@
 	import Card from '$lib/components/ui/Card.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Alert from '$lib/components/ui/Alert.svelte';
+	import Input from '$lib/components/ui/Input.svelte';
+	import ContractSummary from '$lib/components/contractFlow/ContractSummary.svelte';
 
 	let offer = null;
 	let loading = false;
+	let selectedTermId = null;
+	let previewLoading = false;
+	let previewError = null;
+	let preview = null;
+
+	// Fields needed for preview API
+	let startDate = $contractFlowStore.personalInfo.startDate || new Date().toISOString().split('T')[0];
+	let voucherCode = $contractFlowStore.personalInfo.voucherCode || '';
+	let appliedVoucherCode = $contractFlowStore.personalInfo.voucherCode || '';
+	let voucherMessage = '';
+	let voucherStatus = '';
+
+	// Personal info fields (including dateOfBirth)
+	let personalInfo = {
+		...$contractFlowStore.personalInfo,
+		dateOfBirth: $contractFlowStore.personalInfo.dateOfBirth || ''
+	};
+
+	// Debounce timer
+	let debounceTimer;
 
 	$: offer = $contractFlowStore.selectedOffer;
-	$: term = offer?.terms?.[0];
+	$: selectedTermId = $contractFlowStore.selectedTermId;
+	$: terms = offer?.terms || [];
+	$: hasMultipleTerms = terms.length > 1;
+
+	// Get the currently selected term
+	$: selectedTerm = terms.find(t => t.id === selectedTermId) || terms[0];
+
+	// Fetch preview from API
+	async function fetchPreview(debounce = false) {
+		if (!selectedTermId) {
+			console.warn('No term ID selected, cannot fetch preview');
+			return;
+		}
+
+		// Clear existing timer if debouncing
+		if (debounce) {
+			clearTimeout(debounceTimer);
+			debounceTimer = setTimeout(() => fetchPreview(false), 500);
+			return;
+		}
+
+		previewLoading = true;
+		previewError = null;
+
+		try {
+			const api = new ContractFlowApi($configStore.apiBaseUrl, $configStore.apiKey);
+
+			// Build minimal customer object for preview
+			const customer = {
+				firstName: 'Preview',
+				lastName: 'User',
+				email: 'preview@example.com',
+				dateOfBirth: personalInfo.dateOfBirth || '1990-01-01',
+				street: 'Preview Street',
+				city: 'Preview City',
+				zipCode: '12345',
+				countryCode: 'DE',
+				language: {
+					languageCode: 'de',
+					countryCode: 'DE'
+				}
+			};
+
+			// Build contract object
+			const contract = {
+				contractOfferTermId: selectedTermId,
+				startDate: startDate || new Date().toISOString().split('T')[0]
+			};
+
+			if (appliedVoucherCode) {
+				contract.voucherCode = appliedVoucherCode;
+			}
+
+			const previewRequest = {
+				contract: contract,
+				customer: customer
+			};
+
+			console.log('Fetching preview with request:', previewRequest);
+
+			preview = await api.createContractPreview(previewRequest);
+
+			console.log('Preview API response:', preview);
+
+			// Save preview to store
+			contractFlowStore.setPreview(preview);
+
+			// If voucher was applied, show success message
+			if (appliedVoucherCode && preview.voucherSuccessMessage) {
+				voucherMessage = preview.voucherSuccessMessage;
+				voucherStatus = 'success';
+			} else if (appliedVoucherCode && preview.voucherErrorCode) {
+				voucherMessage = 'Invalid voucher code';
+				voucherStatus = 'error';
+				appliedVoucherCode = '';
+				contractFlowStore.updatePersonalInfo({ voucherCode: '' });
+			}
+
+			previewLoading = false;
+		} catch (err) {
+			console.error('Preview API failed:', err);
+			previewError = err.message || 'Failed to load preview. Please try again.';
+			previewLoading = false;
+		}
+	}
+
+	onMount(async () => {
+		// Fetch full offer details including flatFees
+		if ($contractFlowStore.selectedOfferId && !offer?.terms?.[0]?.flatFees) {
+			loading = true;
+			try {
+				const api = new ContractFlowApi($configStore.apiBaseUrl, $configStore.apiKey);
+				const fullOffer = await api.getMembershipOffer($contractFlowStore.selectedOfferId);
+				// Update store with full offer details
+				contractFlowStore.selectOffer(fullOffer.id, fullOffer);
+			} catch (err) {
+				console.error('Failed to fetch full offer details:', err);
+			} finally {
+				loading = false;
+			}
+		}
+
+		if (!offer) {
+			contractFlowStore.goToStep(1);
+		} else {
+			// Fetch initial preview
+			await fetchPreview();
+		}
+	});
+
+	// Reactive: Re-fetch preview when term changes
+	$: if (selectedTermId) {
+		fetchPreview();
+	}
+
+	// Reactive: Re-fetch preview when dateOfBirth changes (debounced)
+	$: if (personalInfo.dateOfBirth) {
+		contractFlowStore.updatePersonalInfo({ dateOfBirth: personalInfo.dateOfBirth });
+		fetchPreview(true);
+	}
+
+	// Reactive: Re-fetch preview when startDate changes (debounced)
+	$: if (startDate) {
+		contractFlowStore.updatePersonalInfo({ startDate });
+		fetchPreview(true);
+	}
+
+	$: term = selectedTerm;
+	$: paymentType = term?.paymentFrequency?.type || 'RECURRING';
+	$: isRecurring = paymentType === 'RECURRING';
+	$: isTermBased = paymentType === 'TERM_BASED' || paymentType === 'NON_RECURRING';
+
+	// Use preview data if available, otherwise fall back to offer data
 	$: price = (() => {
+		if (preview?.ageAdjustedPrice !== null && preview?.ageAdjustedPrice !== undefined) {
+			return preview.ageAdjustedPrice;
+		}
+		if (preview?.discountedBasePrice !== null && preview?.discountedBasePrice !== undefined) {
+			return preview.discountedBasePrice;
+		}
+		if (preview?.basePrice !== null && preview?.basePrice !== undefined) {
+			return preview.basePrice;
+		}
+
+		// Fallback to offer data
 		if (!term) return 0;
-		// Try paymentFrequency.price first
+		if (isTermBased && term.paymentFrequency?.termsToPrices?.length > 0) {
+			const termsPrice = term.paymentFrequency.termsToPrices[0].price;
+			return typeof termsPrice === 'object' ? termsPrice.amount : termsPrice;
+		}
 		if (term.paymentFrequency?.price) {
 			return typeof term.paymentFrequency.price === 'object'
-				? term.paymentFrequency.price.amount / 100
+				? term.paymentFrequency.price.amount
 				: term.paymentFrequency.price;
 		}
-		// Check termsToPrices for TERM_BASED pricing
-		if (term.paymentFrequency?.termsToPrices?.length > 0) {
-			const termsPrice = term.paymentFrequency.termsToPrices[0].price;
-			return typeof termsPrice === 'object' ? termsPrice.amount / 100 : termsPrice;
-		}
-		// Fallback to rateStartPrice
 		if (term.rateStartPrice) {
 			return typeof term.rateStartPrice === 'object'
-				? term.rateStartPrice.amount / 100
+				? term.rateStartPrice.amount
 				: term.rateStartPrice;
 		}
 		return 0;
 	})();
-	$: totalValue = (() => {
-		if (!term?.contractVolumeInformation?.totalContractVolume) return 0;
-		const total = term.contractVolumeInformation.totalContractVolume;
-		return typeof total === 'object' ? total.amount / 100 : total;
+
+	$: flatFees = preview?.flatFeePreviews || term?.flatFees || [];
+
+	// Use preview data for "Due Today" if available
+	$: totalDueToday = (() => {
+		if (preview?.paymentPreview?.dueOnSigningAmount) {
+			const amount = preview.paymentPreview.dueOnSigningAmount;
+			return typeof amount === 'object' ? amount.amount : amount;
+		}
+
+		// Fallback calculation
+		const totalFlatFees = flatFees.reduce((sum, fee) => {
+			const feeAmount = typeof fee.paymentFrequency?.price === 'object'
+				? fee.paymentFrequency.price.amount
+				: (fee.paymentFrequency?.price || fee.discountedPrice || 0);
+			return sum + feeAmount;
+		}, 0);
+
+		if (isRecurring) {
+			return totalFlatFees;
+		} else if (isTermBased) {
+			return price + totalFlatFees;
+		}
+		return 0;
 	})();
 
-	onMount(async () => {
-		if (!offer) {
-			contractFlowStore.goToStep(1);
+	$: totalValue = (() => {
+		if (preview?.contractVolumeInformation?.totalContractVolume !== null &&
+		    preview?.contractVolumeInformation?.totalContractVolume !== undefined) {
+			return preview.contractVolumeInformation.totalContractVolume;
 		}
-	});
+		if (!term?.contractVolumeInformation?.totalContractVolume) return 0;
+		const total = term.contractVolumeInformation.totalContractVolume;
+		return typeof total === 'object' ? total.amount : total;
+	})();
 
-	function handleNext() {
-		contractFlowStore.nextStep();
+	function handleTermSelect(termId) {
+		contractFlowStore.selectTerm(termId);
+		// Preview will be fetched automatically via reactive statement
+	}
+
+	function applyVoucher() {
+		if (!voucherCode.trim()) {
+			voucherMessage = 'Please enter a voucher code';
+			voucherStatus = 'error';
+			return;
+		}
+
+		appliedVoucherCode = voucherCode;
+		contractFlowStore.updatePersonalInfo({ voucherCode: voucherCode });
+		fetchPreview(); // Re-fetch with voucher
+	}
+
+	function removeVoucher() {
+		voucherCode = '';
+		appliedVoucherCode = '';
+		voucherMessage = '';
+		voucherStatus = '';
+		contractFlowStore.updatePersonalInfo({ voucherCode: '' });
+		fetchPreview(); // Re-fetch without voucher
+	}
+
+	// Check if all required personal info fields are filled
+	$: hasPersonalInfo = personalInfo.firstName && personalInfo.lastName &&
+	                     personalInfo.email && personalInfo.street &&
+	                     personalInfo.zip && personalInfo.city &&
+	                     personalInfo.countryCode &&
+	                     personalInfo.dateOfBirth && startDate;
+
+	function updatePersonalField(field, value) {
+		personalInfo = { ...personalInfo, [field]: value };
+		contractFlowStore.updatePersonalInfo({ [field]: value });
+	}
+
+	function fillTestData() {
+		// Randomize email to avoid duplicate customer checks
+		const randomId = Math.floor(Math.random() * 100000);
+		const timestamp = Date.now().toString().slice(-6);
+		const randomEmail = `max.mustermann+${timestamp}${randomId}@example.com`;
+
+		const testData = {
+			firstName: 'Max',
+			lastName: 'Mustermann',
+			email: randomEmail,
+			phone: '+491234567890',
+			street: 'Hauptstraße 123',
+			houseNumber: '',
+			zip: '10115',
+			city: 'Berlin',
+			countryCode: 'DE',
+			dateOfBirth: '2000-01-01'
+		};
+
+		Object.entries(testData).forEach(([key, value]) => {
+			updatePersonalField(key, value);
+		});
+
+		personalInfo = { ...personalInfo, ...testData };
+	}
+
+	async function handleNext() {
+		if (!hasPersonalInfo) return;
+
+		// Re-fetch preview with complete personal info before proceeding
+		previewLoading = true;
+		previewError = null;
+
+		try {
+			const api = new ContractFlowApi($configStore.apiBaseUrl, $configStore.apiKey);
+
+			// Build complete customer object
+			const customer = {
+				firstName: personalInfo.firstName,
+				lastName: personalInfo.lastName,
+				email: personalInfo.email,
+				dateOfBirth: personalInfo.dateOfBirth,
+				phoneNumberMobile: personalInfo.phone || undefined,
+				street: personalInfo.street,
+				city: personalInfo.city,
+				zipCode: personalInfo.zip,
+				countryCode: personalInfo.countryCode,
+				language: {
+					languageCode: 'de',
+					countryCode: personalInfo.countryCode
+				}
+			};
+
+			// Build contract object
+			const contract = {
+				contractOfferTermId: selectedTermId,
+				startDate: startDate
+			};
+
+			if (appliedVoucherCode) {
+				contract.voucherCode = appliedVoucherCode;
+			}
+
+			const previewRequest = {
+				contract: contract,
+				customer: customer
+			};
+
+			console.log('Final preview with complete info:', previewRequest);
+
+			preview = await api.createContractPreview(previewRequest);
+			contractFlowStore.setPreview(preview);
+
+			// Jump to step 4 (payment), skipping old step 3
+			contractFlowStore.goToStep(4);
+		} catch (err) {
+			console.error('Preview API failed:', err);
+			previewError = err.message || 'Failed to load preview. Please try again.';
+		} finally {
+			previewLoading = false;
+		}
 	}
 
 	function handleBack() {
 		contractFlowStore.previousStep();
 	}
+
+	// Helper to get term price for display
+	function getTermPrice(t) {
+		if (t.paymentFrequency?.price) {
+			return typeof t.paymentFrequency.price === 'object'
+				? t.paymentFrequency.price.amount
+				: t.paymentFrequency.price;
+		}
+		if (t.rateStartPrice) {
+			return typeof t.rateStartPrice === 'object'
+				? t.rateStartPrice.amount
+				: t.rateStartPrice;
+		}
+		return 0;
+	}
+
+	// Helper to get term flat fees total
+	function getTermFlatFeesTotal(t) {
+		return (t.flatFees || []).reduce((sum, fee) => {
+			const feeAmount = typeof fee.paymentFrequency?.price === 'object'
+				? fee.paymentFrequency.price.amount
+				: (fee.paymentFrequency?.price || 0);
+			return sum + feeAmount;
+		}, 0);
+	}
 </script>
 
 <div class="screen">
-	<Card title="Membership Details">
+	<!-- Two-column layout: Form on left, Summary on right (desktop) -->
+	<div class="contract-flow-layout">
+		<!-- Main Form Column -->
+		<div class="form-column">
+	<Card title="Mitgliedschaftsdetails">
 		{#if offer && term}
-			<!-- Hero Summary Card -->
-			<div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-6 text-white mb-6">
-				<h2 class="text-2xl font-bold mb-2">{offer.name}</h2>
-				{#if term.paymentFrequency}
-					<div class="flex items-baseline">
-						<span class="text-4xl font-bold">
-							{formatCurrencyDecimal(price)}
-						</span>
-						<span class="text-xl ml-2">
-							{parsePaymentFrequency(term.paymentFrequency.paymentFrequency)}
-						</span>
+			<!-- Preview Error Alert -->
+			{#if previewError}
+				<Alert type="error" class="mb-6">
+					<div class="flex items-center justify-between">
+						<div>
+							<p class="font-semibold mb-1">Preview Error</p>
+							<p>{previewError}</p>
+						</div>
+						<Button variant="secondary" size="sm" on:click={() => fetchPreview()} disabled={previewLoading}>
+							{previewLoading ? 'Retrying...' : 'Retry'}
+						</Button>
 					</div>
-				{/if}
+				</Alert>
+			{/if}
 
-				{#if totalValue > 0}
-					<p class="mt-4 text-blue-100">
-						Total: {formatCurrencyDecimal(totalValue)}
-					</p>
-				{/if}
+			<!-- Voucher Success Message -->
+			{#if voucherMessage && voucherStatus === 'success'}
+				<Alert type="success" class="mb-6">
+					{voucherMessage}
+				</Alert>
+			{/if}
+
+			<!-- Term Selection (if multiple terms available) -->
+			{#if hasMultipleTerms}
+				<div class="mb-6">
+					<h3 class="text-lg font-semibold mb-3">Wählen Sie Ihre Vertragslaufzeit</h3>
+					<div class="grid grid-cols-1 gap-4">
+						{#each terms as t (t.id)}
+							{@const termPrice = getTermPrice(t)}
+							{@const termFlatFees = getTermFlatFeesTotal(t)}
+							{@const isSelected = t.id === selectedTermId}
+							<button
+								type="button"
+								on:click={() => handleTermSelect(t.id)}
+								class="relative p-4 rounded-lg border-2 transition-all text-left {isSelected
+									? 'border-primary bg-primary bg-opacity-10 shadow-md'
+									: 'border-gray-200 hover:border-primary hover:shadow-sm'}"
+							>
+								{#if isSelected}
+									<div class="absolute top-2 right-2">
+										<svg class="w-6 h-6 text-primary" fill="currentColor" viewBox="0 0 20 20">
+											<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+										</svg>
+									</div>
+								{/if}
+
+								<div class="mb-2">
+									<div class="text-2xl font-bold text-gray-900">{formatCurrencyDecimal(termPrice)}</div>
+									<div class="text-sm text-gray-600">pro Monat</div>
+								</div>
+
+								{#if termFlatFees > 0}
+									<div class="text-sm text-gray-700 mb-2">
+										+ {formatCurrencyDecimal(termFlatFees)} Setup
+									</div>
+								{/if}
+
+								<div class="space-y-1 text-xs text-gray-600">
+									{#if t.initialTerm}
+										<div>📅 Laufzeit: {formatDuration(t.initialTerm)}</div>
+									{/if}
+									{#if t.extensionTerm}
+										<div>🔄 Verlängerung: {formatDuration(t.extensionTerm)}</div>
+									{/if}
+									{#if t.cancelationPeriod}
+										<div>⏱️ Kündigung: {formatDuration(t.cancelationPeriod)}</div>
+									{/if}
+								</div>
+							</button>
+						{/each}
+					</div>
+				</div>
+			{/if}
+
+			<!-- Contract Configuration Fields -->
+			<div class="bg-base-200 rounded-lg p-4 mb-6">
+				<h3 class="font-bold text-lg mb-4">📋 Vertragsdetails</h3>
+
+				<div class="space-y-4">
+					<Input
+						label="Vertragsbeginn"
+						type="date"
+						bind:value={startDate}
+						required
+						helpText="Ihr Mitgliedschaft beginnt an diesem Datum"
+					/>
+
+					<div>
+						<label class="block text-sm font-medium mb-1">
+							Gutscheincode (Optional)
+						</label>
+						<div class="flex gap-3">
+							<input
+								type="text"
+								bind:value={voucherCode}
+								placeholder="Code eingeben"
+								class="input input-bordered flex-1"
+								disabled={!!appliedVoucherCode || previewLoading}
+							/>
+							{#if appliedVoucherCode}
+								<button
+									type="button"
+									on:click={removeVoucher}
+									class="btn btn-error"
+									disabled={previewLoading}
+								>
+									Entfernen
+								</button>
+							{:else}
+								<button
+									type="button"
+									on:click={applyVoucher}
+									class="btn btn-success"
+									disabled={previewLoading || !voucherCode.trim()}
+								>
+									Anwenden
+								</button>
+							{/if}
+						</div>
+						{#if voucherMessage && voucherStatus === 'error'}
+							<p class="text-sm text-error mt-1">{voucherMessage}</p>
+						{/if}
+						{#if appliedVoucherCode}
+							<div class="mt-2 badge badge-success gap-2">
+								<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-4 h-4 stroke-current">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+								</svg>
+								Gutschein: {appliedVoucherCode}
+							</div>
+						{/if}
+					</div>
+				</div>
+			</div>
+
+			<!-- Personal Information Section -->
+			<div class="bg-base-200 rounded-lg p-4">
+				<div class="flex items-center justify-between mb-4">
+					<h3 class="font-bold text-lg">👤 Persönliche Informationen</h3>
+					<button type="button" class="btn btn-ghost btn-sm" on:click={fillTestData}>
+						Testdaten einfügen
+					</button>
+				</div>
+
+				<div class="space-y-4">
+					<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+						<Input
+							label="Vorname"
+							bind:value={personalInfo.firstName}
+							on:input={(e) => updatePersonalField('firstName', e.target.value)}
+							required
+							placeholder="Max"
+						/>
+						<Input
+							label="Nachname"
+							bind:value={personalInfo.lastName}
+							on:input={(e) => updatePersonalField('lastName', e.target.value)}
+							required
+							placeholder="Mustermann"
+						/>
+					</div>
+
+					<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+						<Input
+							label="Geburtsdatum"
+							type="date"
+							bind:value={personalInfo.dateOfBirth}
+							on:input={(e) => updatePersonalField('dateOfBirth', e.target.value)}
+							required
+							placeholder="TT.MM.JJJJ"
+							helpText="Erforderlich für altersbasierte Preise"
+						/>
+						<Input
+							label="E-Mail"
+							type="email"
+							bind:value={personalInfo.email}
+							on:input={(e) => updatePersonalField('email', e.target.value)}
+							required
+							placeholder="max@example.com"
+						/>
+					</div>
+
+					<Input
+						label="Telefonnummer"
+						type="tel"
+						bind:value={personalInfo.phone}
+						on:input={(e) => updatePersonalField('phone', e.target.value)}
+						placeholder="+49 123 456789"
+					/>
+				</div>
+			</div>
+
+			<!-- Address Section -->
+			<div class="bg-base-200 rounded-lg p-4">
+				<h3 class="font-bold text-lg mb-4">📍 Adresse</h3>
+
+				<div class="space-y-4">
+					<Input
+						label="Straße und Hausnummer"
+						bind:value={personalInfo.street}
+						on:input={(e) => updatePersonalField('street', e.target.value)}
+						required
+						placeholder="Hauptstraße 123"
+					/>
+
+					<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+						<div class="md:col-span-2">
+							<Input
+								label="Stadt"
+								bind:value={personalInfo.city}
+								on:input={(e) => updatePersonalField('city', e.target.value)}
+								required
+								placeholder="Berlin"
+							/>
+						</div>
+						<Input
+							label="Postleitzahl"
+							bind:value={personalInfo.zip}
+							on:input={(e) => updatePersonalField('zip', e.target.value)}
+							required
+							placeholder="10115"
+						/>
+					</div>
+
+					<div>
+						<label for="countryCode" class="block text-sm font-medium mb-1">
+							Land <span class="text-error">*</span>
+						</label>
+						<select
+							id="countryCode"
+							bind:value={personalInfo.countryCode}
+							on:change={(e) => updatePersonalField('countryCode', e.target.value)}
+							required
+							class="select select-bordered w-full"
+						>
+							<option value="">Land auswählen</option>
+							<option value="DE">Deutschland</option>
+							<option value="AT">Österreich</option>
+							<option value="CH">Schweiz</option>
+							<option value="FR">Frankreich</option>
+							<option value="IT">Italien</option>
+							<option value="ES">Spanien</option>
+							<option value="NL">Niederlande</option>
+							<option value="BE">Belgien</option>
+							<option value="GB">Vereinigtes Königreich</option>
+							<option value="US">Vereinigte Staaten</option>
+						</select>
+					</div>
+				</div>
 			</div>
 
 			<!-- Contract Details -->
-			<div class="space-y-4">
-				<div class="grid grid-cols-2 gap-4">
-					{#if term.initialTerm}
-						<div>
-							<p class="text-sm text-gray-500">Initial Term</p>
-							<p class="font-semibold">{formatDuration(term.initialTerm)}</p>
-						</div>
-					{/if}
-
-					{#if term.extensionTerm}
-						<div>
-							<p class="text-sm text-gray-500">Extension Term</p>
-							<p class="font-semibold">{formatDuration(term.extensionTerm)}</p>
-						</div>
-					{/if}
-
-					{#if term.cancelationPeriod}
-						<div>
-							<p class="text-sm text-gray-500">Cancellation Period</p>
-							<p class="font-semibold">{formatDuration(term.cancelationPeriod)}</p>
-						</div>
-					{/if}
-				</div>
-
+			<div class="space-y-6">
 				{#if offer.description}
-					<div class="mt-4">
+					<div>
+						<h3 class="text-sm font-semibold text-gray-700 mb-2">Beschreibung</h3>
 						<p class="text-gray-600">{offer.description}</p>
 					</div>
 				{/if}
+
+				<div>
+					<h3 class="text-sm font-semibold text-gray-700 mb-3">Vertragsdetails</h3>
+					<div class="grid grid-cols-2 gap-4">
+						{#if term.initialTerm}
+							<div>
+								<p class="text-xs text-gray-500">Vertragslaufzeit</p>
+								<p class="font-semibold">{formatDuration(term.initialTerm)}</p>
+							</div>
+						{/if}
+
+						{#if term.extensionTerm}
+							<div>
+								<p class="text-xs text-gray-500">Verlängerung</p>
+								<p class="font-semibold">{formatDuration(term.extensionTerm)}</p>
+							</div>
+						{/if}
+
+						{#if term.cancelationPeriod}
+							<div>
+								<p class="text-xs text-gray-500">Kündigungsfrist</p>
+								<p class="font-semibold">{formatDuration(term.cancelationPeriod)}</p>
+							</div>
+						{/if}
+
+						{#if totalValue > 0}
+							<div>
+								<p class="text-xs text-gray-500">Gesamtwert</p>
+								<p class="font-semibold text-primary">{formatCurrencyDecimal(totalValue)}</p>
+							</div>
+						{/if}
+					</div>
+				</div>
 			</div>
 
 			<!-- Actions -->
 			<div class="flex justify-between mt-6 pt-6 border-t">
-				<Button variant="secondary" on:click={handleBack}>← Back</Button>
-				<Button variant="primary" on:click={handleNext}>Continue →</Button>
+				<Button variant="secondary" on:click={handleBack} disabled={previewLoading}>← Zurück</Button>
+				<Button
+					variant="primary"
+					on:click={handleNext}
+					disabled={previewLoading || !hasPersonalInfo || !!previewError}
+				>
+					{#if previewLoading}
+						<span class="loading loading-spinner loading-sm"></span>
+						Lädt...
+					{:else}
+						Weiter zur Zahlung →
+					{/if}
+				</Button>
 			</div>
 		{:else}
-			<Alert type="error">No offer selected. Please go back and select an offer.</Alert>
-			<Button variant="secondary" on:click={handleBack} class="mt-4">← Back to Selection</Button>
+			<Alert type="error">Kein Angebot ausgewählt. Bitte gehen Sie zurück und wählen Sie ein Angebot.</Alert>
+			<Button variant="secondary" on:click={handleBack} class="mt-4">← Zurück zur Auswahl</Button>
 		{/if}
 	</Card>
+		</div>
+
+		<!-- Summary Sidebar Column -->
+		<div class="summary-column">
+			<ContractSummary {offer} {preview} loading={previewLoading} error={previewError} />
+		</div>
+	</div>
 </div>
+
+<style>
+	/* Desktop: Two-column layout with sticky sidebar */
+	.contract-flow-layout {
+		display: flex;
+		gap: 2rem;
+		align-items: flex-start;
+		max-width: 1600px;
+		margin: 0 auto;
+		padding: 0 2rem;
+	}
+
+	.form-column {
+		flex: 1 1 65%;
+		min-width: 0;
+	}
+
+	.summary-column {
+		flex: 0 0 35%;
+		max-width: 480px;
+		position: sticky;
+		top: 1.5rem;
+		align-self: flex-start;
+	}
+
+	/* Mobile: Single column, summary on top */
+	@media (max-width: 991px) {
+		.contract-flow-layout {
+			flex-direction: column-reverse;
+		}
+
+		.summary-column {
+			position: static;
+			width: 100%;
+			order: -1;
+			margin-bottom: 1.5rem;
+		}
+
+		.form-column {
+			width: 100%;
+		}
+	}
+</style>

@@ -1,6 +1,7 @@
 <script>
 	import { onMount, onDestroy } from 'svelte';
 	import { sessionStore } from '$lib/stores/session.js';
+	import { widgetConfigStore } from '$lib/stores/widgetConfig.js';
 	import Card from '$lib/components/ui/Card.svelte';
 	import Alert from '$lib/components/ui/Alert.svelte';
 
@@ -34,12 +35,10 @@
 		try {
 			console.log('Mounting payment widget with token:', $sessionStore.token?.substring(0, 20));
 
-			widgetInstance = window.paymentWidget.init({
+			// Mount widget with global configuration
+			const widgetConfig = widgetConfigStore.getWidgetConfig({
 				userSessionToken: $sessionStore.token,
 				container: container,
-				environment: 'sandbox',
-				countryCode: 'DE',
-				locale: 'en',
 				onSuccess: (paymentRequestToken, paymentInstrumentDetails) => {
 					console.log('Payment success!', paymentRequestToken);
 					console.log('Payment details:', paymentInstrumentDetails);
@@ -50,6 +49,8 @@
 					alert(`Payment error: ${error.message || 'Unknown error'}`);
 				}
 			});
+
+			widgetInstance = window.paymentWidget.init(widgetConfig);
 
 			mounted = true;
 			console.log('Payment widget mounted successfully');

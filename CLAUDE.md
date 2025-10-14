@@ -2,6 +2,43 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## **CRITICAL: Testing Requirement**
+
+**🚨 MANDATORY TESTING POLICY 🚨**
+
+After implementing ANY code changes, fixes, or new features, you **MUST** test the implementation to verify it works correctly. This is **NON-NEGOTIABLE** unless the user explicitly includes `NOTEST` in their prompt.
+
+**Testing Requirements:**
+1. **Always test after implementation** - Never assume code works without verification
+2. **Use browser automation** - Use Playwright MCP tools to test the actual UI
+3. **Verify complete flows** - Test from start to finish, not just individual components
+4. **Check API calls** - Verify correct endpoints, request/response structures, error handling
+5. **Validate user experience** - Ensure loading states, errors, and success paths work
+6. **Check console for errors** - Use browser console to catch JavaScript errors
+7. **Document findings** - Report what was tested and results
+
+**Testing Tools Available:**
+- `mcp__playwright__browser_navigate` - Navigate to pages
+- `mcp__playwright__browser_click` - Click buttons and links
+- `mcp__playwright__browser_type` - Fill form fields
+- `mcp__playwright__browser_snapshot` - Capture page state
+- `mcp__playwright__browser_console_messages` - Check for errors
+- `mcp__playwright__browser_wait_for` - Wait for async operations
+
+**When Testing is Optional:**
+- User includes `NOTEST` keyword in their prompt
+- Changes are purely documentation updates
+- Changes are only to configuration files (non-code)
+
+**Consequences of Not Testing:**
+- Bugs ship to production undetected
+- User loses confidence in implementation quality
+- Wasted time debugging issues that testing would have caught
+
+**Remember:** Code that isn't tested is code that doesn't work. Period.
+
+---
+
 ## Project Overview
 
 This is a comprehensive Payment Widget Test Suite that integrates with the Finion Pay API to create payment sessions and test payment widget functionality. The application provides a complete workflow from session creation through widget mounting and payment processing.

@@ -13,6 +13,7 @@ TESTING_RESULTS.md
 .env.local
 .env.*.local
 *.key
+api_credentials.json
 
 # IDE & Editor Files
 .vscode/

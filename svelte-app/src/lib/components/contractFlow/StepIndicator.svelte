@@ -1,12 +1,14 @@
 <script>
 	export let currentStep = 1;
 
+	// Step 3 (Personal Info) has been merged into Step 2
+	// Internal steps: 1, 2, 4, 5, 6 -> Display steps: 1, 2, 3, 4, 5
 	const steps = [
-		{ number: 1, label: 'Select Membership' },
-		{ number: 2, label: 'Details' },
-		{ number: 3, label: 'Personal Info' },
-		{ number: 4, label: 'Payment' },
-		{ number: 5, label: 'Confirmation' }
+		{ number: 1, displayNumber: 1, label: 'Select Membership' },
+		{ number: 2, displayNumber: 2, label: 'Details' },
+		{ number: 4, displayNumber: 3, label: 'Payment' },
+		{ number: 5, displayNumber: 4, label: 'Review' },
+		{ number: 6, displayNumber: 5, label: 'Confirmation' }
 	];
 </script>
 
@@ -18,7 +20,7 @@
 				<div
 					class="w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all {currentStep >=
 					step.number
-						? 'bg-blue-600 text-white'
+						? 'bg-primary text-white'
 						: 'bg-gray-200 text-gray-500'}"
 				>
 					{#if currentStep > step.number}
@@ -31,12 +33,12 @@
 							/>
 						</svg>
 					{:else}
-						{step.number}
+						{step.displayNumber}
 					{/if}
 				</div>
 				<span
 					class="text-xs mt-1 font-medium {currentStep === step.number
-						? 'text-blue-600'
+						? 'text-primary'
 						: 'text-gray-500'}"
 				>
 					{step.label}
@@ -46,7 +48,7 @@
 			<!-- Connector Line -->
 			{#if index < steps.length - 1}
 				<div
-					class="w-12 h-1 mx-2 {currentStep > step.number ? 'bg-blue-600' : 'bg-gray-200'}"
+					class="w-12 h-1 mx-2 {currentStep > step.number ? 'bg-primary' : 'bg-gray-200'}"
 				></div>
 			{/if}
 		</div>

@@ -1,13 +1,14 @@
 <script>
 	import { onMount } from 'svelte';
 	import { contractFlowStore } from '$lib/stores/contractFlow.js';
+	import { configStore } from '$lib/stores/config.js';
+	import { ContractFlowApi } from '$lib/api/contractFlow.js';
 	import StepIndicator from '$lib/components/contractFlow/StepIndicator.svelte';
 	import Step1OfferSelection from '$lib/components/contractFlow/Step1OfferSelection.svelte';
 	import Step2OfferDetails from '$lib/components/contractFlow/Step2OfferDetails.svelte';
-	import Step3PersonalInfo from '$lib/components/contractFlow/Step3PersonalInfo.svelte';
 	import Step4Payment from '$lib/components/contractFlow/Step4Payment.svelte';
-	import Step5Confirmation from '$lib/components/contractFlow/Step5Confirmation.svelte';
-	import ContractSummary from '$lib/components/contractFlow/ContractSummary.svelte';
+	import Step5Review from '$lib/components/contractFlow/Step5Review.svelte';
+	import Step6Confirmation from '$lib/components/contractFlow/Step6Confirmation.svelte';
 
 	let currentStep = 1;
 	let selectedOffer = null;
@@ -17,9 +18,44 @@
 	$: selectedOffer = $contractFlowStore.selectedOffer;
 	$: preview = $contractFlowStore.preview;
 
-	onMount(() => {
-		// Reset flow on mount
-		contractFlowStore.reset();
+	onMount(async () => {
+		const currentState = $contractFlowStore;
+
+		// If we have a session, restore missing data
+		if (currentState.selectedOfferId && !currentState.selectedOffer) {
+			// Refetch offer by ID (in case it was lost)
+			try {
+				const api = new ContractFlowApi($configStore.apiBaseUrl, $configStore.apiKey);
+				const offer = await api.getMembershipOffer(currentState.selectedOfferId);
+				contractFlowStore.selectOffer(currentState.selectedOfferId, offer);
+				console.log('Offer restored');
+			} catch (error) {
+				console.error('Failed to restore offer:', error);
+				contractFlowStore.reset();
+			}
+		}
+
+		// If we're past step 3 and missing preview, rebuild it
+		if (currentState.currentStep >= 3 && currentState.selectedTermId && !currentState.preview) {
+			try {
+				const api = new ContractFlowApi($configStore.apiBaseUrl, $configStore.apiKey);
+				const termId = currentState.selectedTermId;
+				if (termId) {
+					const previewData = {
+						contractOfferTermId: termId,
+						startDate: currentState.personalInfo.startDate || currentState.customStartDate,
+						voucherCode: currentState.personalInfo.voucherCode || undefined
+					};
+					const preview = await api.createContractPreview(previewData);
+					contractFlowStore.setPreview(preview);
+					console.log('Preview restored');
+				}
+			} catch (error) {
+				console.error('Failed to restore preview:', error);
+			}
+		}
+
+		console.log(`Session restored at step ${currentState.currentStep}`);
 	});
 </script>
 
@@ -45,40 +81,30 @@
 
 	<!-- Main Content -->
 	<div class="container mx-auto px-4 py-8">
-		<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-			<!-- Steps Column -->
-			<div class="lg:col-span-2">
-				<!-- Step 1: Offer Selection -->
-				{#if currentStep === 1}
-					<Step1OfferSelection />
-				{/if}
+		<div class="max-w-4xl mx-auto">
+			<!-- Step 1: Offer Selection -->
+			{#if currentStep === 1}
+				<Step1OfferSelection />
+			{/if}
 
-				<!-- Step 2: Offer Details -->
-				{#if currentStep === 2}
-					<Step2OfferDetails />
-				{/if}
+			<!-- Step 2: Offer Details & Personal Info (Combined) -->
+			{#if currentStep === 2}
+				<Step2OfferDetails />
+			{/if}
 
-				<!-- Step 3: Personal Information -->
-				{#if currentStep === 3}
-					<Step3PersonalInfo />
-				{/if}
+			<!-- Step 3: Payment (was Step 4) -->
+			{#if currentStep === 3 || currentStep === 4}
+				<Step4Payment />
+			{/if}
 
-				<!-- Step 4: Payment -->
-				{#if currentStep === 4}
-					<Step4Payment />
-				{/if}
+			<!-- Step 4: Review & Confirm (was Step 5) -->
+			{#if currentStep === 5}
+				<Step5Review />
+			{/if}
 
-				<!-- Step 5: Confirmation -->
-				{#if currentStep === 5}
-					<Step5Confirmation />
-				{/if}
-			</div>
-
-			<!-- Summary Sidebar (visible from step 2 onwards) -->
-			{#if currentStep >= 2 && selectedOffer}
-				<div class="lg:col-span-1">
-					<ContractSummary offer={selectedOffer} {preview} />
-				</div>
+			<!-- Step 5: Confirmation (was Step 6) -->
+			{#if currentStep === 6}
+				<Step6Confirmation />
 			{/if}
 		</div>
 	</div>

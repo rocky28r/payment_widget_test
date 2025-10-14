@@ -3,7 +3,7 @@
 	import { contractFlowStore } from '$lib/stores/contractFlow.js';
 	import { configStore } from '$lib/stores/config.js';
 	import { ContractFlowApi } from '$lib/api/contractFlow.js';
-	import { formatCurrencyDecimal, parsePaymentFrequency } from '$lib/utils/format.js';
+	import { formatCurrencyDecimal, parsePaymentFrequency, formatDuration } from '$lib/utils/format.js';
 	import Card from '$lib/components/ui/Card.svelte';
 	import Alert from '$lib/components/ui/Alert.svelte';
 
@@ -53,7 +53,7 @@
 			<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 				{#each offers as offer}
 					<button
-						class="offer-card border-2 border-gray-200 rounded-lg p-6 text-left hover:border-blue-500 hover:shadow-lg transition-all"
+						class="offer-card border-2 border-gray-200 rounded-lg p-6 text-left hover:border-primary hover:shadow-soft transition-all"
 						on:click={() => selectOffer(offer.id, offer)}
 					>
 						<h3 class="text-xl font-bold text-gray-900 mb-2">{offer.name}</h3>
@@ -63,43 +63,88 @@
 
 						{#if offer.terms && offer.terms.length > 0}
 							{@const term = offer.terms[0]}
+							{@const paymentType = term.paymentFrequency?.type || 'RECURRING'}
+							{@const isRecurring = paymentType === 'RECURRING'}
+							{@const isTermBased = paymentType === 'TERM_BASED' || paymentType === 'NON_RECURRING'}
+
 							{@const getPrice = () => {
-								// Try paymentFrequency.price first
+								// For term-based/prepaid: use termsToPrices for upfront cost
+								if (isTermBased && term.paymentFrequency?.termsToPrices?.length > 0) {
+									const termsPrice = term.paymentFrequency.termsToPrices[0].price;
+									return typeof termsPrice === 'object' ? termsPrice.amount : termsPrice;
+								}
+								// For recurring: use paymentFrequency.price
 								if (term.paymentFrequency?.price) {
 									return typeof term.paymentFrequency.price === 'object'
-										? term.paymentFrequency.price.amount / 100
+										? term.paymentFrequency.price.amount
 										: term.paymentFrequency.price;
-								}
-								// Check termsToPrices for TERM_BASED pricing
-								if (term.paymentFrequency?.termsToPrices?.length > 0) {
-									const termsPrice = term.paymentFrequency.termsToPrices[0].price;
-									return typeof termsPrice === 'object' ? termsPrice.amount / 100 : termsPrice;
 								}
 								// Fallback to rateStartPrice
 								if (term.rateStartPrice) {
 									return typeof term.rateStartPrice === 'object'
-										? term.rateStartPrice.amount / 100
+										? term.rateStartPrice.amount
 										: term.rateStartPrice;
 								}
 								return 0;
 							}}
 							{@const price = getPrice()}
 							{@const frequency = term.paymentFrequency?.paymentFrequency || 'MONTHLY'}
+							{@const contractTerm = term.initialTerm}
+							{@const flatFees = term.flatFees || []}
+							{@const totalFlatFees = flatFees.reduce((sum, fee) => {
+								const feeAmount = typeof fee.paymentFrequency?.price === 'object'
+									? fee.paymentFrequency.price.amount
+									: (fee.paymentFrequency?.price || 0);
+								return sum + feeAmount;
+							}, 0)}
 
 							<div class="mt-4 pt-4 border-t">
-								<div class="flex items-baseline">
-									<span class="text-3xl font-bold text-blue-600">
-										{formatCurrencyDecimal(price)}
-									</span>
-									<span class="text-gray-500 ml-2">
-										{parsePaymentFrequency(frequency)}
-									</span>
-								</div>
+								{#if isRecurring}
+									<!-- Recurring Plan Display (FR1.1) -->
+									<div class="flex items-baseline">
+										<span class="text-3xl font-bold text-primary">
+											{formatCurrencyDecimal(price)}
+										</span>
+										<span class="text-gray-500 ml-2">
+											{parsePaymentFrequency(frequency)}
+										</span>
+									</div>
+									{#if totalFlatFees > 0}
+										<div class="mt-2 text-sm text-gray-600">
+											+ {formatCurrencyDecimal(totalFlatFees)} einmalige Gebühren
+										</div>
+									{/if}
+								{:else if isTermBased}
+									<!-- Term-Based/Prepaid Plan Display (FR1.2) -->
+									<div>
+										<div class="flex items-baseline">
+											<span class="text-3xl font-bold text-primary">
+												{formatCurrencyDecimal(price)}
+											</span>
+										</div>
+										{#if contractTerm}
+											<div class="text-gray-500 text-sm mt-1">
+												für {formatDuration(contractTerm)}
+											</div>
+										{/if}
+										{#if contractTerm?.value && price > 0}
+											{@const effectiveMonthly = price / contractTerm.value}
+											<div class="text-gray-400 text-xs mt-1">
+												entspricht {formatCurrencyDecimal(effectiveMonthly)}/Monat
+											</div>
+										{/if}
+									</div>
+									{#if totalFlatFees > 0}
+										<div class="mt-2 text-sm text-gray-600">
+											+ {formatCurrencyDecimal(totalFlatFees)} einmalige Gebühren
+										</div>
+									{/if}
+								{/if}
 							</div>
 						{/if}
 
 						<div class="mt-4">
-							<span class="text-blue-600 font-semibold">View Details →</span>
+							<span class="text-primary font-semibold">View Details →</span>
 						</div>
 					</button>
 				{/each}

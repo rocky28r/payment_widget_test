@@ -16,13 +16,13 @@ export class ContractFlowApi extends ApiClient {
 	}
 
 	// Create contract preview
-	async createContractPreview(offerId, data) {
-		return this.post(`/v1/memberships/membership-offers/${offerId}/preview`, data);
+	async createContractPreview(data) {
+		return this.post('/v1/memberships/signup/preview', data);
 	}
 
-	// Create contract
-	async createContract(offerId, data) {
-		return this.post(`/v1/memberships/membership-offers/${offerId}/contracts`, data);
+	// Create membership (signup)
+	async createMembership(data) {
+		return this.post('/v1/memberships/signup', data);
 	}
 
 	// Create payment session
