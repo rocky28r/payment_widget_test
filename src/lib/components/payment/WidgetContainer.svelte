@@ -2,6 +2,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { sessionStore } from '$lib/stores/session.js';
 	import { widgetConfigStore } from '$lib/stores/widgetConfig.js';
+	import { debugLog } from '$lib/stores/debugLog.js';
 	import Card from '$lib/components/ui/Card.svelte';
 	import Alert from '$lib/components/ui/Alert.svelte';
 
@@ -25,6 +26,9 @@
 		// Check if paymentWidget is available
 		if (typeof window.paymentWidget === 'undefined') {
 			console.error('Payment widget library not loaded');
+			debugLog.add('error', 'Payment widget library not loaded', {
+				message: 'window.paymentWidget is undefined'
+			});
 			return;
 		}
 
@@ -32,6 +36,7 @@
 		if (widgetInstance) {
 			try {
 				await widgetInstance.destroy();
+				debugLog.add('widget', 'Widget destroyed before remount', null);
 			} catch (e) {
 				console.error('Error destroying widget:', e);
 			}
@@ -47,11 +52,35 @@
 				onSuccess: (paymentRequestToken, paymentInstrumentDetails) => {
 					console.log('Payment success!', paymentRequestToken);
 					console.log('Payment details:', paymentInstrumentDetails);
+
+					// Log success callback
+					debugLog.add('widget', 'Payment success callback', {
+						paymentRequestToken,
+						paymentInstrumentDetails
+					});
+
 					alert(`Payment successful! Token: ${paymentRequestToken}`);
 				},
 				onError: (error) => {
 					console.error('Payment error:', error);
+
+					// Log error callback
+					debugLog.add('error', 'Payment error callback', {
+						message: error.message || 'Unknown error',
+						error
+					});
+
 					alert(`Payment error: ${error.message || 'Unknown error'}`);
+				}
+			});
+
+			// Log widget initialization
+			debugLog.add('widget', 'Initializing payment widget', {
+				config: {
+					environment: widgetConfig.environment,
+					countryCode: widgetConfig.countryCode,
+					locale: widgetConfig.locale,
+					userSessionToken: widgetConfig.userSessionToken?.substring(0, 20) + '...'
 				}
 			});
 
@@ -59,8 +88,19 @@
 
 			mounted = true;
 			console.log('Payment widget mounted successfully');
+
+			// Log successful mount
+			debugLog.add('widget', 'Widget mounted successfully', null);
 		} catch (error) {
 			console.error('Failed to mount payment widget:', error);
+
+			// Log mount error
+			debugLog.add('error', 'Failed to mount widget', {
+				message: error.message,
+				stack: error.stack,
+				error
+			});
+
 			mounted = false;
 		}
 	}

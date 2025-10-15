@@ -2,6 +2,7 @@
 	import { ApiClient } from '$lib/api/client.js';
 	import { configStore } from '$lib/stores/config.js';
 	import { sessionStore } from '$lib/stores/session.js';
+	import { debugLog } from '$lib/stores/debugLog.js';
 	import { validateField } from '$lib/utils/validation.js';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Input from '$lib/components/ui/Input.svelte';
@@ -92,9 +93,23 @@
 
 			console.log('Creating payment session:', requestBody);
 
+			// Log API request
+			debugLog.add('request', 'POST /v1/payments/user-session', {
+				endpoint: '/v1/payments/user-session',
+				method: 'POST',
+				body: requestBody
+			});
+
 			const response = await apiClient.post('/v1/payments/user-session', requestBody);
 
 			console.log('Payment session created:', response);
+
+			// Log successful response
+			debugLog.add('response', 'Session created successfully', {
+				token: response.token,
+				tokenValidUntil: response.tokenValidUntil,
+				finionPayCustomerId: response.finionPayCustomerId
+			});
 
 			// Update session store
 			sessionStore.setToken(response.token, response.tokenValidUntil, response.finionPayCustomerId);
@@ -102,6 +117,14 @@
 			successMessage = `Payment session created successfully! Token: ${response.token.substring(0, 20)}...`;
 		} catch (error) {
 			console.error('Failed to create payment session:', error);
+
+			// Log error
+			debugLog.add('error', 'Failed to create payment session', {
+				message: error.message,
+				stack: error.stack,
+				error: error
+			});
+
 			errorMessage = error.message || 'Failed to create payment session';
 		} finally {
 			loading = false;
