@@ -1,6 +1,6 @@
-# Payment Widget Test Suite
+# Universal Payment Component Test Suite
 
-A showcase application demonstrating the **MagicLine OpenAPI** integration with the **SPA Payment Widget**. Built with Svelte + SvelteKit, this project illustrates real-world payment flows including standalone widget testing and a complete 6-step membership contract signup process.
+A showcase application demonstrating the **MagicLine OpenAPI** integration with the **SPA Universal Payment Component**. Built with Svelte + SvelteKit, this project illustrates real-world payment flows including standalone widget testing and a complete 6-step membership contract signup process.
 
 ![SvelteKit](https://img.shields.io/badge/SvelteKit-FF3E00?logo=svelte&logoColor=white) ![TailwindCSS](https://img.shields.io/badge/TailwindCSS-06B6D4?logo=tailwindcss&logoColor=white) ![DaisyUI](https://img.shields.io/badge/DaisyUI-5A0EF8?logo=daisyui&logoColor=white)
 
@@ -8,7 +8,7 @@ A showcase application demonstrating the **MagicLine OpenAPI** integration with 
 
 This application demonstrates:
 - **Payment Session Management** - Creating user sessions via MagicLine OpenAPI
-- **Widget Integration** - Mounting and configuring the SPA Payment Widget
+- **Widget Integration** - Mounting and configuring the SPA Universal Payment Component
 - **Dual Payment Flows** - Handling both recurring and one-time payments
 - **Membership Contracts** - Complete end-to-end membership signup with payment
 - **Smart Payment Detection** - Conditional payment steps based on business logic
@@ -32,9 +32,9 @@ npm run dev
 
 ## 📦 What's Included
 
-### 1. Payment Widget Test Page (`/`)
+### 1. Universal Payment Component Test Page (`/`)
 
-A standalone environment for testing the payment widget with various configurations.
+A standalone environment for testing the universal payment component with various configurations.
 
 **Features:**
 - Create payment sessions with custom amounts and scopes
@@ -103,9 +103,9 @@ const { token, tokenValidUntil, finionPayCustomerId } = await response.json();
 - **Token validity:** Sessions expire after a short time (check `tokenValidUntil`)
 - **Customer linking:** Use `finionPayCustomerId` to link multiple sessions to the same customer
 
-### Payment Widget Mounting
+### Universal Payment Component Mounting
 
-Once you have a session token, you can mount the payment widget in your application.
+Once you have a session token, you can mount the universal payment component in your application.
 
 **Widget Library:**
 ```html
@@ -389,6 +389,6 @@ npm run preview
 
 ---
 
-**Built to showcase:** MagicLine OpenAPI capabilities with SPA Payment Widget integration
+**Built to showcase:** MagicLine OpenAPI capabilities with SPA Universal Payment Component integration
 
 For detailed implementation documentation, see `CLAUDE.md`

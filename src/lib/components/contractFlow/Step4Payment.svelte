@@ -144,7 +144,7 @@
 			try {
 				instance.destroy();
 			} catch (err) {
-				console.error('Error destroying widget:', err);
+				console.error('Error destroying component:', err);
 			}
 		}
 	}
@@ -196,11 +196,11 @@
 
 			// Check if paymentWidget is available
 			if (typeof window.paymentWidget === 'undefined') {
-				throw new Error('Payment widget library not loaded');
+				throw new Error('Universal payment component library not loaded');
 			}
 
-			console.log('Mounting recurring payment widget with token:', session.token?.substring(0, 20));
-			debugLog.add('widget', 'Mounting recurring payment widget', {
+			console.log('Mounting recurring universal payment component with token:', session.token?.substring(0, 20));
+			debugLog.add('widget', 'Mounting recurring universal payment component', {
 				scope: 'MEMBER_ACCOUNT',
 				amount: 0,
 				tokenPreview: session.token?.substring(0, 20)
@@ -228,7 +228,7 @@
 				},
 				onError: (err) => {
 					console.error('Recurring payment error:', err);
-					debugLog.add('error', 'Recurring payment widget error', {
+					debugLog.add('error', 'Recurring universal payment component error', {
 						error: err.message || err,
 						scope: 'MEMBER_ACCOUNT'
 					});
@@ -239,8 +239,8 @@
 
 			recurringWidgetInstance = window.paymentWidget.init(widgetConfig);
 
-			console.log('Recurring payment widget mounted successfully');
-			debugLog.add('widget', 'Recurring payment widget mounted', { scope: 'MEMBER_ACCOUNT' });
+			console.log('Recurring universal payment component mounted successfully');
+			debugLog.add('widget', 'Recurring universal payment component mounted', { scope: 'MEMBER_ACCOUNT' });
 		} catch (err) {
 			error = err.message;
 			console.error('Failed to mount recurring widget:', err);
@@ -365,11 +365,11 @@
 			contractFlowStore.setUpfrontSessionToken(session.token);
 
 			if (typeof window.paymentWidget === 'undefined') {
-				throw new Error('Payment widget library not loaded');
+				throw new Error('Universal payment component library not loaded');
 			}
 
-			console.log('Mounting upfront payment widget');
-			debugLog.add('widget', 'Mounting upfront payment widget', {
+			console.log('Mounting upfront universal payment component');
+			debugLog.add('widget', 'Mounting upfront universal payment component', {
 				scope: 'ECOM',
 				amount: upfrontAmount,
 				tokenPreview: session.token?.substring(0, 20)
@@ -391,7 +391,7 @@
 				},
 				onError: (err) => {
 					console.error('Upfront payment error:', err);
-					debugLog.add('error', 'Upfront payment widget error', {
+					debugLog.add('error', 'Upfront universal payment component error', {
 						error: err.message || err,
 						scope: 'ECOM',
 						amount: upfrontAmount
@@ -402,8 +402,8 @@
 
 			upfrontWidgetInstance = window.paymentWidget.init(widgetConfig);
 
-			console.log('Upfront payment widget mounted successfully');
-			debugLog.add('widget', 'Upfront payment widget mounted', {
+			console.log('Upfront universal payment component mounted successfully');
+			debugLog.add('widget', 'Upfront universal payment component mounted', {
 				scope: 'ECOM',
 				amount: upfrontAmount
 			});

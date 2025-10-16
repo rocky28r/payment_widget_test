@@ -41,9 +41,9 @@ After implementing ANY code changes, fixes, or new features, you **MUST** test t
 
 ## Project Overview
 
-This is a **Svelte + SvelteKit** application that provides comprehensive testing and demonstration of the SPA Payment Widget integration with the Finion Pay API. The application includes:
+This is a **Svelte + SvelteKit** application that provides comprehensive testing and demonstration of the SPA Universal Payment Component integration with the Finion Pay API. The application includes:
 
-1. **Payment Widget Test Environment** - Standalone widget testing with session creation and configuration
+1. **Universal Payment Component Test Environment** - Standalone widget testing with session creation and configuration
 2. **Membership Contract Flow** - Complete 6-step membership signup process with payment integration
 
 ## Architecture
@@ -117,7 +117,7 @@ const response = await fetch(`${config.baseUrl}/v1/payments/user-session`, {
 
 **Access**: Click "Config" button (gear icon) in navigation bar to open modal.
 
-### Payment Widget Integration
+### Universal Payment Component Integration
 
 **Widget Library**: `https://widget.dev.payment.sportalliance.com/widget.js`
 
@@ -412,7 +412,7 @@ export function formatCurrency(cents, currency = 'EUR') {
 
 **Debug Logging**: Add `console.log` statements in components
 
-**Test Mode**: Use `environment: 'test'` for payment widget testing
+**Test Mode**: Use `environment: 'test'` for universal payment component testing
 
 ## Deployment
 
@@ -466,7 +466,7 @@ The contract submission requires **two separate payment tokens**:
    - Field: `contract.initialPaymentRequestToken`
    - Created in Step 5
 
-**Never use the same token for both fields**. Each payment widget session creates a unique token tied to its scope and amount.
+**Never use the same token for both fields**. Each universal payment component session creates a unique token tied to its scope and amount.
 
 ### Contract Flow Payment Integration
 
@@ -495,7 +495,7 @@ When creating payment sessions in the contract flow:
 ### Old HTML/JS Implementation Removed (2025-10-14)
 
 The following files were removed as part of the Svelte migration:
-- `index.html` - Old payment widget test page
+- `index.html` - Old universal payment component test page
 - `script.js` - Old widget test logic
 - `styles.css` - Old custom styles
 - `config.js` - Old centralized configuration
@@ -526,7 +526,7 @@ git checkout old-html-flow-final
 **Previous Version**: Comprehensive documentation with all features, recent changes, and support sections
 
 **New Version**: Focused showcase documentation emphasizing:
-- Clear purpose: showcase of MagicLine OpenAPI + Payment Widget integration
+- Clear purpose: showcase of MagicLine OpenAPI + Universal Payment Component integration
 - Detailed code examples for key implementations:
   - User session creation with full request/response
   - Payment widget mounting with configuration options

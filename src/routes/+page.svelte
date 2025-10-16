@@ -4,11 +4,11 @@
 </script>
 
 <svelte:head>
-	<title>Payment Widget Test - Svelte</title>
+	<title>Universal Payment Component Test</title>
 </svelte:head>
 
 <div class="container mx-auto px-4 py-8">
-	<h1 class="text-3xl font-bold mb-8">Payment Widget Test Suite</h1>
+	<h1 class="text-3xl font-bold mb-8">Universal Payment Component Test Suite</h1>
 
 	<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 		<!-- Session Creation -->
@@ -16,7 +16,7 @@
 			<SessionForm />
 		</div>
 
-		<!-- Widget Container -->
+		<!-- Component Container -->
 		<div>
 			<WidgetContainer />
 		</div>
@@ -44,7 +44,7 @@
 					<li>Click the "Config" button in the navigation to set your API key and base URL</li>
 					<li>Fill in the payment session form (amount and scope are required)</li>
 					<li>Click "Create Payment Session" to generate a session token</li>
-					<li>The payment widget will automatically mount in the right panel</li>
+					<li>The universal payment component will automatically mount in the right panel</li>
 				</ol>
 			</div>
 		</div>

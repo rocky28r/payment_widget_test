@@ -11,9 +11,9 @@
 	let mounted = false;
 	let currentToken = null;
 
-	// Reactive statement: mount widget when session token changes
+	// Reactive statement: mount component when session token changes
 	$: if ($sessionStore.token && container) {
-		// If token has changed, remount the widget
+		// If token has changed, remount the component
 		if (currentToken !== $sessionStore.token) {
 			currentToken = $sessionStore.token;
 			mountWidget();
@@ -25,27 +25,27 @@
 
 		// Check if paymentWidget is available
 		if (typeof window.paymentWidget === 'undefined') {
-			console.error('Payment widget library not loaded');
-			debugLog.add('error', 'Payment widget library not loaded', {
+			console.error('Universal payment component library not loaded');
+			debugLog.add('error', 'Universal payment component library not loaded', {
 				message: 'window.paymentWidget is undefined'
 			});
 			return;
 		}
 
-		// Unmount existing widget first
+		// Unmount existing component first
 		if (widgetInstance) {
 			try {
 				await widgetInstance.destroy();
-				debugLog.add('widget', 'Widget destroyed before remount', null);
+				debugLog.add('widget', 'Component destroyed before remount', null);
 			} catch (e) {
-				console.error('Error destroying widget:', e);
+				console.error('Error destroying component:', e);
 			}
 		}
 
 		try {
-			console.log('Mounting payment widget with token:', $sessionStore.token?.substring(0, 20));
+			console.log('Mounting universal payment component with token:', $sessionStore.token?.substring(0, 20));
 
-			// Mount widget with global configuration
+			// Mount component with global configuration
 			const widgetConfig = widgetConfigStore.getWidgetConfig({
 				userSessionToken: $sessionStore.token,
 				container: container,
@@ -75,7 +75,7 @@
 			});
 
 			// Log widget initialization
-			debugLog.add('widget', 'Initializing payment widget', {
+			debugLog.add('widget', 'Initializing universal payment component', {
 				config: {
 					environment: widgetConfig.environment,
 					countryCode: widgetConfig.countryCode,
@@ -87,15 +87,15 @@
 			widgetInstance = window.paymentWidget.init(widgetConfig);
 
 			mounted = true;
-			console.log('Payment widget mounted successfully');
+			console.log('Universal payment component mounted successfully');
 
 			// Log successful mount
-			debugLog.add('widget', 'Widget mounted successfully', null);
+			debugLog.add('widget', 'Component mounted successfully', null);
 		} catch (error) {
-			console.error('Failed to mount payment widget:', error);
+			console.error('Failed to mount universal payment component:', error);
 
 			// Log mount error
-			debugLog.add('error', 'Failed to mount widget', {
+			debugLog.add('error', 'Failed to mount component', {
 				message: error.message,
 				stack: error.stack,
 				error
@@ -111,10 +111,10 @@
 				const destroyResult = widgetInstance.destroy();
 				// Only call .catch() if destroy() returns a Promise
 				if (destroyResult && typeof destroyResult.catch === 'function') {
-					destroyResult.catch((e) => console.error('Error destroying widget:', e));
+					destroyResult.catch((e) => console.error('Error destroying component:', e));
 				}
 			} catch (e) {
-				console.error('Error destroying widget:', e);
+				console.error('Error destroying component:', e);
 			}
 		}
 	});
@@ -126,7 +126,7 @@
 	}
 </script>
 
-<Card title="Payment Widget">
+<Card title="Universal Payment Component">
 	{#if !$sessionStore.token}
 		<Alert type="info">
 			<div class="flex items-center">
@@ -143,7 +143,7 @@
 						d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
 					></path>
 				</svg>
-				<span>Create a payment session first to mount the widget</span>
+				<span>Create a payment session first to mount the component</span>
 			</div>
 		</Alert>
 	{:else}
