@@ -8,8 +8,7 @@
 </svelte:head>
 
 <div class="container mx-auto px-4 py-8">
-	<h1 class="text-3xl font-bold mb-2">Payment Widget Test Suite</h1>
-	<p class="text-gray-600 mb-8">Built with Svelte + DaisyUI</p>
+	<h1 class="text-3xl font-bold mb-8">Payment Widget Test Suite</h1>
 
 	<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 		<!-- Session Creation -->
