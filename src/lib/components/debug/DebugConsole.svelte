@@ -4,14 +4,25 @@
 
 	let selectedLog = null;
 	let logContainer;
+	let isNearBottom = true;
 
 	// Use store for expanded state so layout can react to it
 	$: expanded = $debugConsoleExpanded;
 
-	// Auto-scroll to bottom when new logs are added
-	$: if ($debugLog.length > 0 && logContainer && expanded) {
+	// Track if user is near bottom of scroll
+	function handleScroll() {
+		if (!logContainer) return;
+		const threshold = 50; // pixels from bottom
+		const scrollBottom = logContainer.scrollHeight - logContainer.scrollTop - logContainer.clientHeight;
+		isNearBottom = scrollBottom < threshold;
+	}
+
+	// Auto-scroll to bottom when new logs are added, but only if user is already near bottom
+	$: if ($debugLog.length > 0 && logContainer && expanded && isNearBottom) {
 		setTimeout(() => {
-			logContainer.scrollTop = logContainer.scrollHeight;
+			if (logContainer) {
+				logContainer.scrollTop = logContainer.scrollHeight;
+			}
 		}, 0);
 	}
 
@@ -81,6 +92,7 @@
 			<!-- Log List -->
 			<div
 				bind:this={logContainer}
+				on:scroll={handleScroll}
 				class="flex-1 overflow-y-auto max-h-[400px] bg-base-300"
 			>
 				{#if $debugLog.length === 0}
