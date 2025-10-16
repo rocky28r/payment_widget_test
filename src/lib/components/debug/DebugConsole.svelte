@@ -1,10 +1,12 @@
 <script>
-	import { debugLog } from '$lib/stores/debugLog.js';
+	import { debugLog, debugConsoleExpanded } from '$lib/stores/debugLog.js';
 	import { onMount } from 'svelte';
 
-	let expanded = true;
 	let selectedLog = null;
 	let logContainer;
+
+	// Use store for expanded state so layout can react to it
+	$: expanded = $debugConsoleExpanded;
 
 	// Auto-scroll to bottom when new logs are added
 	$: if ($debugLog.length > 0 && logContainer && expanded) {
@@ -54,7 +56,7 @@
 
 <div class="fixed bottom-0 left-0 right-0 z-40 bg-base-300 border-t-2 border-base-content/20">
 	<!-- Header -->
-	<div class="flex items-center justify-between px-4 py-2 bg-base-200 cursor-pointer" on:click={() => expanded = !expanded}>
+	<div class="flex items-center justify-between px-4 py-2 bg-base-200 cursor-pointer" on:click={() => debugConsoleExpanded.set(!$debugConsoleExpanded)}>
 		<div class="flex items-center gap-2">
 			<span class="font-mono font-bold">Debug Console</span>
 			<span class="badge badge-sm">{$debugLog.length} logs</span>

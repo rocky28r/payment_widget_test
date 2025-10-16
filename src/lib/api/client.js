@@ -1,4 +1,5 @@
 import { ApiError } from './errors.js';
+import { debugLog } from '$lib/stores/debugLog.js';
 
 /**
  * HTTP API Client with retry logic and timeout handling
@@ -26,13 +27,20 @@ export class ApiClient {
 			...(options.body && { body: JSON.stringify(options.body) })
 		};
 
-		return this.fetchWithRetry(url, config);
+		// Log the request
+		debugLog.add('request', `${config.method} ${endpoint}`, {
+			url,
+			method: config.method,
+			body: options.body
+		});
+
+		return this.fetchWithRetry(url, config, endpoint);
 	}
 
 	/**
 	 * Fetch with retry logic
 	 */
-	async fetchWithRetry(url, config) {
+	async fetchWithRetry(url, config, endpoint) {
 		let lastError;
 
 		for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
@@ -49,12 +57,39 @@ export class ApiClient {
 
 				if (!response.ok) {
 					const errorData = await response.json().catch(() => ({}));
-					throw new ApiError(response.status, errorData);
+					const apiError = new ApiError(response.status, errorData);
+
+					// Log API error
+					debugLog.add('error', `${config.method} ${endpoint} - ${response.status}`, {
+						status: response.status,
+						error: errorData,
+						attempt,
+						maxRetries: this.maxRetries
+					});
+
+					throw apiError;
 				}
 
-				return await response.json();
+				const data = await response.json();
+
+				// Log successful response
+				debugLog.add('response', `${config.method} ${endpoint} - ${response.status}`, {
+					status: response.status,
+					data
+				});
+
+				return data;
 			} catch (error) {
 				lastError = error;
+
+				// Log network/timeout errors
+				if (!(error instanceof ApiError)) {
+					debugLog.add('error', `${config.method} ${endpoint} - Network error`, {
+						error: error.message,
+						attempt,
+						maxRetries: this.maxRetries
+					});
+				}
 
 				// Don't retry on non-retryable errors
 				if (error instanceof ApiError && !error.retryable) {

@@ -193,6 +193,7 @@ export function formatDuration(duration) {
  * Construct customer management URL from API base URL and customer ID
  * Transforms: https://<tenant>.open-api.<base_url> -> https://<tenant>.web.<base_url>/#/customermanagement/<customerId>/overview
  * Handles various environment prefixes: local, dev, sandbox, ref, prod (empty)
+ * Preserves port numbers if present in the API base URL
  *
  * @param {string} apiBaseUrl - API base URL (e.g., https://spadeanranzenberger.open-api.sandbox.magicline.com)
  * @param {string} customerId - Customer ID from signup response
@@ -205,6 +206,10 @@ export function formatDuration(duration) {
  * @example
  * constructCustomerManagementUrl('https://tenant.open-api.magicline.com', '12345')
  * // Returns: 'https://tenant.web.magicline.com/#/customermanagement/12345/overview'
+ *
+ * @example
+ * constructCustomerManagementUrl('https://tenant1.open-api.local.magicline.com:9443', '12345')
+ * // Returns: 'https://tenant1.web.local.magicline.com:9443/#/customermanagement/12345/overview'
  */
 export function constructCustomerManagementUrl(apiBaseUrl, customerId) {
 	if (!apiBaseUrl || !customerId) return null;
@@ -233,7 +238,10 @@ export function constructCustomerManagementUrl(apiBaseUrl, customerId) {
 
 		// Reconstruct the URL
 		const webHostname = hostnameParts.join('.');
-		const webUrl = `${url.protocol}//${webHostname}/#/customermanagement/${customerId}/overview`;
+
+		// Include port if present (e.g., :9443)
+		const portSuffix = url.port ? `:${url.port}` : '';
+		const webUrl = `${url.protocol}//${webHostname}${portSuffix}/#/customermanagement/${customerId}/overview`;
 
 		return webUrl;
 	} catch (error) {

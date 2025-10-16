@@ -37,4 +37,9 @@ function createDebugLogStore() {
 	};
 }
 
+/**
+ * Store for debug console expanded/collapsed state
+ */
+export const debugConsoleExpanded = writable(true);
+
 export const debugLog = createDebugLogStore();

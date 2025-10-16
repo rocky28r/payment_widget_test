@@ -4,6 +4,7 @@
 	import { configStore } from '$lib/stores/config.js';
 	import { widgetConfigStore } from '$lib/stores/widgetConfig.js';
 	import { ContractFlowApi } from '$lib/api/contractFlow.js';
+	import { debugLog } from '$lib/stores/debugLog.js';
 	import Card from '$lib/components/ui/Card.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Alert from '$lib/components/ui/Alert.svelte';
@@ -199,6 +200,11 @@
 			}
 
 			console.log('Mounting recurring payment widget with token:', session.token?.substring(0, 20));
+			debugLog.add('widget', 'Mounting recurring payment widget', {
+				scope: 'MEMBER_ACCOUNT',
+				amount: 0,
+				tokenPreview: session.token?.substring(0, 20)
+			});
 
 			// Mount widget with global configuration
 			const widgetConfig = widgetConfigStore.getWidgetConfig({
@@ -206,6 +212,11 @@
 				container: containerEl,
 				onSuccess: (paymentRequestToken, paymentInstrumentDetails) => {
 					console.log('Recurring payment successful:', paymentRequestToken);
+					debugLog.add('widget', 'Recurring payment successful', {
+						paymentRequestToken: paymentRequestToken?.substring(0, 20),
+						paymentInstrumentDetails
+					});
+
 					if (paymentInstrumentDetails) {
 						console.log('Payment instrument details:', paymentInstrumentDetails);
 					}
@@ -217,6 +228,10 @@
 				},
 				onError: (err) => {
 					console.error('Recurring payment error:', err);
+					debugLog.add('error', 'Recurring payment widget error', {
+						error: err.message || err,
+						scope: 'MEMBER_ACCOUNT'
+					});
 					error = err.message || 'Payment failed';
 					recurringMounted = false;
 				}
@@ -225,6 +240,7 @@
 			recurringWidgetInstance = window.paymentWidget.init(widgetConfig);
 
 			console.log('Recurring payment widget mounted successfully');
+			debugLog.add('widget', 'Recurring payment widget mounted', { scope: 'MEMBER_ACCOUNT' });
 		} catch (err) {
 			error = err.message;
 			console.error('Failed to mount recurring widget:', err);
@@ -353,6 +369,11 @@
 			}
 
 			console.log('Mounting upfront payment widget');
+			debugLog.add('widget', 'Mounting upfront payment widget', {
+				scope: 'ECOM',
+				amount: upfrontAmount,
+				tokenPreview: session.token?.substring(0, 20)
+			});
 
 			// Mount widget with global configuration
 			const widgetConfig = widgetConfigStore.getWidgetConfig({
@@ -360,11 +381,21 @@
 				container: containerEl,
 				onSuccess: (paymentRequestToken, paymentInstrumentDetails) => {
 					console.log('Upfront payment successful:', paymentRequestToken);
+					debugLog.add('widget', 'Upfront payment successful', {
+						paymentRequestToken: paymentRequestToken?.substring(0, 20),
+						paymentInstrumentDetails,
+						amount: upfrontAmount
+					});
 					contractFlowStore.setUpfrontPaymentToken(paymentRequestToken);
 					upfrontMounted = true;
 				},
 				onError: (err) => {
 					console.error('Upfront payment error:', err);
+					debugLog.add('error', 'Upfront payment widget error', {
+						error: err.message || err,
+						scope: 'ECOM',
+						amount: upfrontAmount
+					});
 					error = err.message || 'Upfront payment failed';
 				}
 			});
@@ -372,6 +403,10 @@
 			upfrontWidgetInstance = window.paymentWidget.init(widgetConfig);
 
 			console.log('Upfront payment widget mounted successfully');
+			debugLog.add('widget', 'Upfront payment widget mounted', {
+				scope: 'ECOM',
+				amount: upfrontAmount
+			});
 		} catch (err) {
 			console.error('Failed to mount upfront widget:', err);
 			error = err.message;

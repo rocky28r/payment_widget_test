@@ -1,7 +1,6 @@
 <script>
 	import SessionForm from '$lib/components/payment/SessionForm.svelte';
 	import WidgetContainer from '$lib/components/payment/WidgetContainer.svelte';
-	import DebugConsole from '$lib/components/debug/DebugConsole.svelte';
 </script>
 
 <svelte:head>
@@ -52,6 +51,3 @@
 		</div>
 	</div>
 </div>
-
-<!-- Debug Console -->
-<DebugConsole />
